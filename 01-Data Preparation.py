@@ -7,7 +7,7 @@
 
 # COMMAND ----------
 
-# MAGIC %sh ls /dbfs/FileStore/ubuntu
+# MAGIC %sh ls /tmp/rkm/ubuntu_csvfiles
 
 # COMMAND ----------
 
@@ -25,34 +25,12 @@
 
 # COMMAND ----------
 
-!cat /dbfs/FileStore/ubuntu/cleaned/ubuntu_dataset.tgz.a* > /dbfs/FileStore/ubuntu/cleaned/ubuntu_dataset.tgz
-
-# COMMAND ----------
-
-!tar -xzf /dbfs/FileStore/ubuntu/cleaned/ubuntu_dataset.tgz 
-
-# COMMAND ----------
-
-import tarfile
-
-file_paths = [
-    "/dbfs/FileStore/ubuntu/cleaned/ubuntu_dataset.tgz.aa",
-    "/dbfs/FileStore/ubuntu/cleaned/ubuntu_dataset.tgz.ab",
-    "/dbfs/FileStore/ubuntu/cleaned/ubuntu_dataset.tgz.ac",
-    "/dbfs/FileStore/ubuntu/cleaned/ubuntu_dataset.tgz.ad",
-    "/dbfs/FileStore/ubuntu/cleaned/ubuntu_dataset.tgz.ae"
-]
-
-extract_path = "/dbfs/FileStore/ubuntu/cleaned_extracted/"
-
-for file_path in file_paths:
-    with tarfile.open(file_path, "r:gz") as tar:
-        tar.extractall(extract_path)
+#!cat ubuntu_dataset.tgz.a* > ubuntu_dataset.tgz
 
 # COMMAND ----------
 
 # Specify the path to the folder containing the CSV files
-folder_path = "/FileStore/ubuntu/cleaned_extracted/ubuntu_csvfiles/trainset.csv"
+folder_path = "/tmp/rkm/ubuntu_csvfiles/trainset.csv"
 
 # Read the CSV file with column names
 df = spark.read.csv(folder_path)
