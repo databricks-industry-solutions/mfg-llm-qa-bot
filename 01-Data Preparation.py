@@ -7,7 +7,7 @@
 
 # COMMAND ----------
 
-# MAGIC %sh ls /tmp/rkm/ubuntu_csvfiles
+# MAGIC %sh ls /dbfs/FileStore/ubuntu/cleaned/extracted/ubuntu_csvfiles
 
 # COMMAND ----------
 
@@ -25,36 +25,46 @@
 
 # COMMAND ----------
 
-#!cat ubuntu_dataset.tgz.a* > ubuntu_dataset.tgz
+#!cat /dbfs/FileStore/ubuntu/cleaned/ubuntu_dataset.tgz.a* > /dbfs/FileStore/ubuntu/cleaned/ubuntu_dataset.tgz
 
 # COMMAND ----------
 
 # Specify the path to the folder containing the CSV files
-folder_path = "/tmp/rkm/ubuntu_csvfiles/trainset.csv"
+folder_path = "/FileStore/ubuntu/cleaned/extracted/ubuntu_csvfiles/trainset.csv"
 
 # Read the CSV file with column names
-df = spark.read.csv(folder_path)
+ubuntu_corpus = spark.read.csv(folder_path)
 
-# Rename the columns
-df = df.withColumnRenamed("_c0", "context") \
+# # Rename the columns
+ubuntu_corpus = ubuntu_corpus.withColumnRenamed("_c0", "context") \
        .withColumnRenamed("_c1", "response") \
        .withColumnRenamed("_c2", "flag")
 
-# Read CSV files into a DataFrame
-#df = spark.read.format("csv").load(folder_path)
-
-display(df)
+display(ubuntu_corpus)
 
 # COMMAND ----------
 
-# Specify the path to the folder containing the CSV files
-folder_path = "FileStore/ubuntu/archive/Ubuntu-dialogue-corpus"
+# %sql
+# CREATE SCHEMA manu_llm_solution_accelerator
 
-# Read CSV files into a DataFrame
-df = spark.read.format("csv").option("header", "true").load(folder_path + "/*.csv")
+# COMMAND ----------
 
-# Process the DataFrame as needed
-display(df)
+from bs4 import BeautifulSoup
+from pyspark.sql.functions import col, udf, length, pandas_udf
+
+#UDF to transform html content as text
+@pandas_udf("string")
+def html_to_text(html):
+  return html.apply(lambda x: BeautifulSoup(x).get_text())
+
+ubuntu_corpus_df =(ubuntu_corpus
+                  .filter("flag = 1") # keep only good answer/question
+                  # .filter(length("_Body") <= 1000) #remove too long questions
+                  .withColumn("context", html_to_text("context")) #Convert html to text
+                  .withColumn("response", html_to_text("response")))
+
+# Save 'raw' content for later loading of questions
+ubuntu_corpus_df.write.mode("overwrite").saveAsTable(f"manu_llm_solution_accelerator.dev.ubuntu_corpus")
 
 # COMMAND ----------
 
