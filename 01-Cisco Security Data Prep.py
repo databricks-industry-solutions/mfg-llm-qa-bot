@@ -4,7 +4,7 @@
 # COMMAND ----------
 
 # DBTITLE 1,Install our vector database
-# MAGIC %pip install -U chromadb==0.3.22 langchain==0.0.168 transformers==4.29.0 accelerate==0.19.0 bitsandbytes tokenizers pypdf pycryptodome
+# MAGIC %pip install -U chromadb==0.3.22 langchain==0.0.168 transformers==4.29.0 accelerate==0.19.0 bitsandbytes tokenizers pypdf pycryptodome typing-inspect==0.8.0 typing_extensions==4.5.0
 
 # COMMAND ----------
 
@@ -90,3 +90,7 @@ if compute_embeddings:
 # MAGIC ## That's it, our Q&A dataset is ready.
 # MAGIC
 # MAGIC In this notebook, we leverage Databricks to prepare our Q&A dataset:
+
+# COMMAND ----------
+
+

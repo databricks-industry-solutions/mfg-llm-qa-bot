@@ -1,5 +1,5 @@
 # Databricks notebook source
-# MAGIC %pip install -U chromadb==0.3.22 langchain==0.0.168 transformers==4.29.0 accelerate==0.19.0 bitsandbytes tokenizers pypdf pycryptodome
+# MAGIC %pip install -U chromadb==0.3.22 langchain==0.0.168 transformers==4.29.0 accelerate==0.19.0 bitsandbytes tokenizers pypdf pycryptodome typing-inspect==0.8.0 typing_extensions==4.5.0
 
 # COMMAND ----------
 
