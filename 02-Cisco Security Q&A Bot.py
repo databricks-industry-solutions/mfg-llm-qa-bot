@@ -44,7 +44,7 @@ from langchain.chains.question_answering import load_qa_chain
  
 def build_qa_chain():
   torch.cuda.empty_cache()
-  model_name = "databricks/dolly-v2-7b" # can use dolly-v2-3b or dolly-v2-7b for smaller model and faster inferences.
+  model_name = "databricks/dolly-v2-7b"  #"databricks/dolly-v2-12b" # can use dolly-v2-3b or dolly-v2-7b for smaller model and faster inferences.
  
   # Increase max_new_tokens for a longer response
   # Other settings might give better results! Play around
