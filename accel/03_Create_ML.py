@@ -138,12 +138,12 @@ from langchain.vectorstores import Chroma
 from langchain.embeddings import HuggingFaceHubEmbeddings
 from langchain.prompts import PromptTemplate
 import torch
-from torch import cuda, bfloat16
+from torch import cuda, bfloat16,float16
 import transformers
 from transformers import AutoTokenizer, pipeline
 from langchain import HuggingFacePipeline
 from langchain.chains import RetrievalQA
-from langchain.memory import VectorStoreRetrieverMemory
+from transformers import StoppingCriteria, StoppingCriteriaList
 import gc
 
 # COMMAND ----------
@@ -151,12 +151,24 @@ import gc
 
 class MLflowMfgBot(mlflow.pyfunc.PythonModel):
 
-  def __init__(self, prompt_template_str, chroma_persist_dir, temperature=0.8, max_new_tokens=128, num_similar_docs=5):
+  # define custom stopping criteria object
+  class StopOnTokens(StoppingCriteria):
+      def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+        tokenizer = transformers.AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
+        # mtp-7b is trained to add "<|endoftext|>" at the end of generations
+        stop_token_ids = tokenizer.convert_tokens_to_ids(["<|endoftext|>"])
+        for stop_id in stop_token_ids:
+          if input_ids[0][-1] == stop_id:
+            return True
+        return False
+
+  def __init__(self, prompt_template_str, chroma_persist_dir, huggingface_token, temperature=0.8, max_new_tokens=128, num_similar_docs=5):
     self._prompt_template_str = prompt_template_str
     self._chroma_persist_dir = chroma_persist_dir
     self._temperature = temperature
     self._max_new_tokens = max_new_tokens
     self._num_similar_docs = num_similar_docs
+    self._huggingface_token = huggingface_token
     self._qa_chain = None
   
   # def __getstate__(self):
@@ -184,23 +196,24 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
       model = transformers.AutoModelForCausalLM.from_pretrained(
           'mosaicml/mpt-7b-instruct',
           trust_remote_code=True,
-          torch_dtype=bfloat16
+          device_map='auto', torch_dtype=float16, load_in_8bit=True, #rkm testing
+          #torch_dtype=bfloat16
       )
 
       model.eval()
-      model.to(device)
+      #model.to(device) #rkmtesting
       print(f"Model loaded on {device}")
       print('Loading tokenizer')
       tokenizer = transformers.AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
-
+      stopping_criteria = StoppingCriteriaList([self.StopOnTokens()])
 
       generate_text = transformers.pipeline(
           model=model, tokenizer=tokenizer,
           return_full_text=True,  # langchain expects the full text
           task='text-generation',
-          device=device,
+          #device=device, #rkmtesting
           # we pass model parameters here too
-          #stopping_criteria=stopping_criteria,  # without this model will ramble
+          stopping_criteria=stopping_criteria,  # without this model will ramble
           temperature=self._temperature,  # 'randomness' of outputs, 0.0 is the min and 1.0 the max
           top_p=0.80,  # select from top tokens whose probability add up to 15%
           top_k=0,  # select from top 0 tokens (because zero, relies on top_p)
@@ -226,6 +239,7 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
     Args:
         context: MLflow context where the model artifact is stored.
     """
+    os.environ['HUGGINGFACEHUB_API_TOKEN'] = self._huggingface_token
     llm, retriever = self.loadModel()
     print('Getting RetrievalQA handle')
     promptTemplate = PromptTemplate(
@@ -268,6 +282,7 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
 mfgsdsbot = MLflowMfgBot(
         configs['prompt_template'], 
         configs['chroma_persist_dir'],
+        dbutils.secrets.get('rkm-scope', 'huggingface'),
         configs['temperature'], 
         configs['max_new_tokens'],
         configs['num_similar_docs'])

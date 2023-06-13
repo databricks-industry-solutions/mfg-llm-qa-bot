@@ -12,10 +12,6 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
-
-
-# COMMAND ----------
-
 # MAGIC %run "./utils/configs"
 
 # COMMAND ----------
@@ -91,7 +87,7 @@ def getPromptTemplate():
 
 # COMMAND ----------
 
-from torch import cuda, bfloat16
+from torch import cuda, bfloat16,float16
 import transformers
 
 device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
@@ -99,11 +95,12 @@ device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
 model = transformers.AutoModelForCausalLM.from_pretrained(
     'mosaicml/mpt-7b-instruct',
     trust_remote_code=True,
-    torch_dtype=bfloat16,
+    device_map='auto', torch_dtype=float16, load_in_8bit=True, #rkm testing
+    #torch_dtype=bfloat16,
     max_seq_len=1440
 )
 model.eval()
-model.to(device)
+#model.to(device)
 print(f"Model loaded on {device}")
 
 # COMMAND ----------
@@ -151,7 +148,7 @@ generate_text = transformers.pipeline(
     model=model, tokenizer=tokenizer,
     return_full_text=True,  # langchain expects the full text
     task='text-generation',
-    device=device,
+    #device=device,
     # we pass model parameters here too
     stopping_criteria=stopping_criteria,  # without this model will ramble
     temperature=configs['temperature'],  # 'randomness' of outputs, 0.0 is the min and 1.0 the max
@@ -208,30 +205,26 @@ res
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC We can also load the [Triton optimized implementation](https://github.com/openai/triton) (Triton uses more memory, but is faster) like so:
-# MAGIC
-# MAGIC ```python
-# MAGIC !pip install -qU triton
-# MAGIC
-# MAGIC from torch import bfloat16
-# MAGIC
-# MAGIC config = transformers.AutoConfig.from_pretrained(
-# MAGIC   'mosaicml/mpt-7b-instruct',
-# MAGIC   trust_remote_code=True
-# MAGIC )
-# MAGIC config.attn_config['attn_impl'] = 'triton'
-# MAGIC config.update({"max_seq_len": 100})
-# MAGIC
-# MAGIC model = transformers.AutoModelForCausalLM.from_pretrained(
-# MAGIC   'mosaicml/mpt-7b-instruct',
-# MAGIC   config=config,
-# MAGIC   torch_dtype=bfloat16,
-# MAGIC   trust_remote_code=True
-# MAGIC )
-# MAGIC model.to(device=device)
-# MAGIC ```
+# MAGIC We still get the same output as we're not really doing anything differently here, but we have now added MTP-7B-instruct to the LangChain library. Using this we can now begin using LangChain's advanced agent tooling, chains, etc, with MTP-7B.
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC We still get the same output as we're not really doing anything differently here, but we have now added MTP-7B-instruct to the LangChain library. Using this we can now begin using LangChain's advanced agent tooling, chains, etc, with MTP-7B.
+del qa_chain
+del tokenizer
+del model
+cuda.empty_cache()
+
+
+# COMMAND ----------
+
+import gc
+gc.collect()
+
+# COMMAND ----------
+
+with torch.no_grad():
+    torch.cuda.empty_cache()
+
+# COMMAND ----------
+
+

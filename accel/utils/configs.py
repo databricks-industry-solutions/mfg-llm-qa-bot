@@ -1,4 +1,10 @@
 # Databricks notebook source
+import os
+os.environ['HUGGINGFACEHUB_API_TOKEN'] = dbutils.secrets.get('rkm-scope', 'huggingface')
+os.environ['HF_HOME'] = '/dbfs/temp/hfmfgcache'
+
+# COMMAND ----------
+
 def dbfsnormalize(path):
   path = path.replace('/dbfs/', 'dbfs:/')
   return path
