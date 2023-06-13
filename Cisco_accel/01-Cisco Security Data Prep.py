@@ -3,8 +3,38 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Install our vector database
+# MAGIC %md ##Introduction
+# MAGIC
+# MAGIC So that our qabot application can respond to user questions with relevant answers, we will provide our model with content from documents relevant to the question being asked.  The idea is that the bot will leverage the information in these documents as it formulates a response.
+# MAGIC
+# MAGIC For our application, we've extracted a series of documents from [Cisco Security Datasheets](https://www.cisco.com/c/en/us/support/security/index.html).  Using these datasheets to provide context will allow our bot to respond to questions relevant to this subject area with deep expertise.
+# MAGIC
+# MAGIC </p>
+# MAGIC
+# MAGIC <img src='https://brysmiwasb.blob.core.windows.net/demos/images/bot_data_processing4.png' width=700>
+# MAGIC
+# MAGIC </p>
+# MAGIC
+# MAGIC In this notebook, we will load these documents, extracted as a series of JSON documents through a separate process, to a table in the Databricks environment.  We will retrieve those documents along with metadata about them and feed that to a vector store which will create on index enabling fast document search and retrieval.
+
+# COMMAND ----------
+
+# DBTITLE 1,Install required libraries
 # MAGIC %pip install -U chromadb==0.3.22 langchain==0.0.168 transformers==4.29.0 accelerate==0.19.0 bitsandbytes tokenizers pypdf pycryptodome typing-inspect==0.8.0 typing_extensions==4.5.0
+
+# COMMAND ----------
+
+# DBTITLE 1,Import required libraries
+from langchain.document_loaders import PyPDFLoader
+from langchain.text_splitter import CharacterTextSplitter
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+import pyspark.sql.functions as fn
+
+from langchain.embeddings import HuggingFaceEmbeddings
+
+from langchain.docstore.document import Document
+from langchain.vectorstores import Chroma
 
 # COMMAND ----------
 
@@ -24,10 +54,6 @@ dbutils.widgets.dropdown("reset_vector_database", "false", ["false", "true"], "R
 cisco_vector_dbpath = demo_path+"/vector_db"
 
 # COMMAND ----------
-
-from langchain.document_loaders import PyPDFLoader
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 # Don't recompute the embeddings if the're already available
 compute_embeddings = dbutils.widgets.get("reset_vector_database") == "true" or is_folder_empty(cisco_vector_dbpath)
@@ -63,15 +89,8 @@ if compute_embeddings:
 
 # COMMAND ----------
 
-from langchain.embeddings import HuggingFaceEmbeddings
-
 # Download model from Hugging face
 hf_embed = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
-
-# COMMAND ----------
-
-from langchain.docstore.document import Document
-from langchain.vectorstores import Chroma
 
 # COMMAND ----------
 
