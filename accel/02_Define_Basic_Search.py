@@ -4,7 +4,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install -U chromadb==0.3.26 langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3 bitsandbytes==0.39.0 einops==0.6.1 xformers==0.0.20
+# MAGIC %pip install -U chromadb==0.3.26 langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3 bitsandbytes==0.39.0 einops==0.6.1 xformers==0.0.20 typing-inspect==0.8.0 typing_extensions==4.5.0
 
 # COMMAND ----------
 
@@ -92,15 +92,30 @@ import transformers
 
 device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
 
+# model = transformers.AutoModelForCausalLM.from_pretrained(
+#     #'mosaicml/mpt-7b-instruct',
+#     #'togethercomputer/RedPajama-INCITE-Instruct-3B-v1',
+#     'databricks/dolly-v2-3b',
+#     trust_remote_code=True,
+#     device_map='auto', 
+#     #torch_dtype=float16, #for gpu
+#     #torch_dtype=bfloat16, #for cpu
+#     #load_in_8bit=True #, #rkm testing
+#     torch_dtype=bfloat16
+#     #max_seq_len=1440 #rkm removed for redpajama
+# )
+
+print(f"{configs['model_name']} using configs {automodelconfigs}")
+
 model = transformers.AutoModelForCausalLM.from_pretrained(
-    'mosaicml/mpt-7b-instruct',
-    trust_remote_code=True,
-    device_map='auto', torch_dtype=float16, load_in_8bit=True, #rkm testing
-    #torch_dtype=bfloat16,
-    max_seq_len=1440
+    configs['model_name'],
+    **automodelconfigs
 )
+
 model.eval()
-#model.to(device)
+if 'RedPajama' in configs['model_name']:
+  model.tie_weights()
+  model.to(device)
 print(f"Model loaded on {device}")
 
 # COMMAND ----------
@@ -110,7 +125,10 @@ print(f"Model loaded on {device}")
 
 # COMMAND ----------
 
-tokenizer = transformers.AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
+token_model= configs['tokenizer_name']
+#token_model='togethercomputer/RedPajama-INCITE-Instruct-3B-v1' 
+#"EleutherAI/gpt-neox-20b"
+tokenizer = transformers.AutoTokenizer.from_pretrained(token_model)
 
 # COMMAND ----------
 
@@ -119,14 +137,15 @@ tokenizer = transformers.AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b"
 
 # COMMAND ----------
 
-#not Used
+
 
 import torch
 from transformers import StoppingCriteria, StoppingCriteriaList
 
 # mtp-7b is trained to add "<|endoftext|>" at the end of generations
 stop_token_ids = tokenizer.convert_tokens_to_ids(["<|endoftext|>"])
-
+print('---')
+print(stop_token_ids)
 # define custom stopping criteria object
 class StopOnTokens(StoppingCriteria):
     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
@@ -144,19 +163,29 @@ stopping_criteria = StoppingCriteriaList([StopOnTokens()])
 
 # COMMAND ----------
 
+
+# generate_text = transformers.pipeline(
+#     model=model, tokenizer=tokenizer,
+#     return_full_text=True,  # langchain expects the full text
+#     task='text-generation',
+#     #device=device,
+#     # we pass model parameters here too
+#     #stopping_criteria=stopping_criteria,  # without this model will ramble
+#     temperature=configs['temperature'],  # 'randomness' of outputs, 0.0 is the min and 1.0 the max
+#     top_p=0.80,  # select from top tokens whose probability add up to 80%
+#     top_k=0,  # select from top 0 tokens (because zero, relies on top_p)
+#     max_new_tokens=configs['max_new_tokens'],  # mex number of tokens to generate in the output
+#     repetition_penalty=1.1, # without this output begins repeating
+#     pad_token_id=tokenizer.eos_token_id 
+# )
+
 generate_text = transformers.pipeline(
     model=model, tokenizer=tokenizer,
-    return_full_text=True,  # langchain expects the full text
-    task='text-generation',
-    #device=device,
-    # we pass model parameters here too
-    stopping_criteria=stopping_criteria,  # without this model will ramble
-    temperature=configs['temperature'],  # 'randomness' of outputs, 0.0 is the min and 1.0 the max
-    top_p=0.80,  # select from top tokens whose probability add up to 80%
-    top_k=0,  # select from top 0 tokens (because zero, relies on top_p)
-    max_new_tokens=configs['max_new_tokens'],  # mex number of tokens to generate in the output
-    repetition_penalty=1.1  # without this output begins repeating
+    device=device,
+    pad_token_id=tokenizer.eos_token_id,
+    **pipelineconfigs
 )
+
 
 # COMMAND ----------
 
@@ -169,7 +198,7 @@ chain_type_kwargs = {"prompt":getPromptTemplate()}
 
 llm = HuggingFacePipeline(pipeline=generate_text)
 
-retriever = vectorstore.as_retriever(search_kwargs={"k": configs['num_similar_docs']}) #, "search_type" : "similarity"
+retriever = vectorstore.as_retriever(search_kwargs={"k": configs['num_similar_docs']}) #) #, "search_type" : "similarity"
 
 qa_chain = RetrievalQA.from_chain_type(llm=llm, 
                                        chain_type="stuff", 
@@ -217,13 +246,13 @@ cuda.empty_cache()
 
 # COMMAND ----------
 
-import gc
-gc.collect()
+# import gc
+# gc.collect()
 
 # COMMAND ----------
 
-with torch.no_grad():
-    torch.cuda.empty_cache()
+# with torch.no_grad():
+#     torch.cuda.empty_cache()
 
 # COMMAND ----------
 
