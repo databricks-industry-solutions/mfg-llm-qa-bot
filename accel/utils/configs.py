@@ -12,7 +12,7 @@ def dbfsnormalize(path):
 # COMMAND ----------
 
 configs = {}
-configs.update({'chroma_persist_dir' : '/dbfs/Users/ramdas.murali@databricks.com/chromadb'})
+configs.update({'vector_persist_dir' : '/dbfs/Users/ramdas.murali@databricks.com/chromadb'})
 configs.update({'data_dir':'/dbfs/Users/ramdas.murali@databricks.com/data/sds_pdf'})
 configs.update({'chunk_size':600})
 configs.update({'chunk_overlap':20})
@@ -37,15 +37,17 @@ configs.update({'model_name' : 'togethercomputer/RedPajama-INCITE-Instruct-3B-v1
 configs.update({'tokenizer_name' : 'togethercomputer/RedPajama-INCITE-Instruct-3B-v1'})
 
 
+#torch_dtype=float16, #for gpu
+#torch_dtype=bfloat16, #for cpu
+#load_in_8bit=True #, 
+#max_seq_len=1440 #rkm removed for redpajama
+
 import torch
 automodelconfigs = {
     'trust_remote_code':True,
     'device_map':'auto', 
-    'torch_dtype':torch.bfloat16
-    #torch_dtype=float16, #for gpu
-    #torch_dtype=bfloat16, #for cpu
-    #load_in_8bit=True #, #rkm testing
-    #max_seq_len=1440 #rkm removed for redpajama
+    'torch_dtype':torch.float16,
+    'load_in_8bit':True 
     }
 
 pipelineconfigs = {

@@ -1,5 +1,6 @@
 # Databricks notebook source
-# MAGIC %pip install -U chromadb pypdf langchain transformers accelerate bitsandbytes einops sentence_transformers PyCryptodome
+# MAGIC %pip install -U PyPDF==3.9.1 pycryptodome==3.18.0 langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3 bitsandbytes==0.39.0 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 PyCryptodome==3.18.0 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
+# MAGIC
 
 # COMMAND ----------
 
@@ -22,74 +23,7 @@ embeddings = HuggingFaceEmbeddings(
 
 # COMMAND ----------
 
-dbutils.fs.rm(dbfsnormalize(configs['chroma_persist_dir']), True)
-
-# COMMAND ----------
-
-# from langchain.document_loaders import PyPDFLoader
-# from langchain import HuggingFaceHub
-# import chromadb
-# from chromadb.utils import embedding_functions
-# from langchain.schema import Document
-
-# chroma_client = chromadb.Client(settings=chromadb.config.Settings(
-#                 chroma_db_impl="duckdb+parquet",
-#                 persist_directory=chroma_persist_dir))
-                                
-# sentence_transformer_ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
-
-# try:
-#   chroma_client.delete_collection('mfg_collection')
-# except:
-#   pass
-
-# collection = chroma_client.get_or_create_collection(name="mfg_collection",
-#                                                     embedding_function=sentence_transformer_ef)
-
-
-# pathlst = dbutils.fs.ls(data_dir)
-# display(pathlst)
-# alldocslstloader=[]
-# for idx, path1 in enumerate(pathlst):
-#   if not str(path1.path).endswith('.pdf'):
-#     continue
-#   pdfurl = path1.path.replace(':', '')
-#   pdfurl = '/' + pdfurl
-#   loader = PyPDFLoader(pdfurl)
-#   alldocslstloader.append(loader)
-#   pdfdocs = loader.load()
-#   cleanpdfdocs = []
-#   for doc in pdfdocs:
-#     doc.page_content = doc.page_content.replace('\n', ' ').replace('\r', ' ').replace('\t', '   ')
-#     cleandoc = Document(page_content = doc.page_content, metadata=doc.metadata)
-#     print(cleandoc)
-#     cleanpdfdocs.append(cleandoc)
-#   splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=chunk_overlap, separators=["\n\n", "\n", " \n", "  \n", " ", ""], keep_separator=False)
-#   texts = splitter.split_documents(cleanpdfdocs)
-#   metadata_lst = []
-#   ids_lst = []
-#   pages_lst=[]
-#   #add more metadata here
-#   for idx2, docs in enumerate(texts):
-#     metadata_i = {'source': pdfurl, 'source_dbfs' : path1.path}
-#     metadata_lst.append(metadata_i)
-#     ids_i = f'id-{idx2}-{idx+1}'
-#     ids_lst.append(ids_i)
-#     pages_lst.append(docs.page_content)
-
-#   collection.add(
-#           documents=pages_lst,
-#           metadatas=metadata_lst,
-#           ids=ids_lst
-#       )
-
-# chroma_client.persist()
-
-
-# COMMAND ----------
-
-# print(collection.count())
-# collection.peek()
+dbutils.fs.rm(dbfsnormalize(configs['vector_persist_dir']), True)
 
 # COMMAND ----------
 
@@ -97,31 +31,20 @@ dbutils.fs.rm(dbfsnormalize(configs['chroma_persist_dir']), True)
 
 # COMMAND ----------
 
-# results = collection.query(
-#     query_texts=["What does the NIOSH do?"],
-#     n_results=3
-# )
-# print(results)
-
-# COMMAND ----------
-
-from langchain.vectorstores import Chroma
 from langchain.document_loaders import PyPDFLoader
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain import HuggingFaceHub
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain.vectorstores import FAISS
 
+embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
 
-
-
-embedding = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
-
-# chromadb path
-chromadb_path = configs['chroma_persist_dir']
+# vectordb path
+vectordb_path = configs['vector_persist_dir']
 data_dir = configs['data_dir']
-# make sure chromadb path is clear
-dbutils.fs.rm(dbfsnormalize(chromadb_path), recurse=True)
+# make sure vectordb path is clear
+dbutils.fs.rm(dbfsnormalize(vectordb_path), recurse=True)
 
 pathlst = dbutils.fs.ls(dbfsnormalize(data_dir))
 display(pathlst)
@@ -156,24 +79,35 @@ for idx, path1 in enumerate(pathlst):
     ids_lst.append(ids_i)
     pages_lst.append(docs.page_content)
   # define logic for embeddings storage
-  vectordb = Chroma.from_texts(
-    collection_name='mfg_collection',
-    texts=pages_lst, 
-    embedding=embedding, 
-    metadatas=metadata_lst,
-    ids=ids_lst,
-    persist_directory=chromadb_path
-    )
-  # persist vector db to storage
-  vectordb.persist()
+
+  # For Chroma
+  # vectordb = Chroma.from_texts(
+  #   collection_name='mfg_collection',
+  #   texts=pages_lst, 
+  #   embedding=embeddings, 
+  #   metadatas=metadata_lst,
+  #   ids=ids_lst,
+  #   persist_directory=vectordb_path
+  #   )
+  # # persist vector db to storage
+  # vectordb.persist()
+  
+  # For FAISS
+  vectordb = FAISS.from_texts(pages_lst, embeddings, metadatas=metadata_lst, ids=ids_lst)
+  vectordb.save_local(vectordb_path)
 
 # COMMAND ----------
 
 #Test the vectorstore
 
-vectorstore = Chroma(collection_name='mfg_collection', 
-       persist_directory=chromadb_path,
-       embedding_function=embedding)
+# Load from Chroma
+# vectorstore = Chroma(collection_name='mfg_collection', 
+#        persist_directory=vectordb_path,
+#        embedding_function=embeddings)
+
+
+# Load from FAISS
+vectorstore = FAISS.load_local(vectordb_path, embeddings)
 
 
 # COMMAND ----------
@@ -202,6 +136,10 @@ print(content)
 
 matched_docs, sources, content = similarity_search('what happens if there are hazardous substances?')
 content
+
+# COMMAND ----------
+
+matched_docs
 
 # COMMAND ----------
 

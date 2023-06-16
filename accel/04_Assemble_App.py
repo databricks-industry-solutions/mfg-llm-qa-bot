@@ -4,11 +4,27 @@
 # COMMAND ----------
 
 
+# Chroma
+# vectorstore = Chroma(
+#         collection_name="mfg_collection",
+#         persist_directory=self._configs['chroma_persist_dir'],
+#         embedding_function=HuggingFaceHubEmbeddings(repo_id='sentence-transformers/all-MiniLM-L6-v2'))
+
+#FAISS
+vector_persist_dir = configs['vector_persist_dir']
+embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
+
+# Load from FAISS
+vectorstore = FAISS.load_local(vector_persist_dir, embeddings)
+retriever = vectorstore.as_retriever(search_kwargs={"k": configs['num_similar_docs']}, 
+                                                search_type = "similarity") 
+
 # instantiate bot object
 mfgsdsbot = MLflowMfgBot(
         configs,
         automodelconfigs,
         pipelineconfigs,
+        retriever,
         dbutils.secrets.get('rkm-scope', 'huggingface'))
 
 
@@ -23,16 +39,19 @@ mfgsdsbot = MLflowMfgBot(
 # get base environment configuration
 conda_env = mlflow.pyfunc.get_default_conda_env()
 # define packages required by model
+
 packages = [
-  f'chromadb==0.3.26',
   f'langchain==0.0.197',
   f'transformers==4.30.1',
   f'accelerate==0.20.3',
   f'bitsandbytes==0.39.0',
   f'einops==0.6.1',
   f'xformers==0.0.20',
+  f'sentence-transformers==2.2.2',
   f'typing-inspect==0.8.0',
-  f'typing_extensions==4.5.0'
+  f'typing_extensions==4.5.0',
+  f'faiss-cpu==1.7.4', 
+  f'tiktoken==0.4.0'
   ]
 
 # add required packages to environment configuration
