@@ -4,7 +4,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install -U langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3 bitsandbytes==0.39.0 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
+# MAGIC %pip install -U langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
 
 # COMMAND ----------
 
@@ -86,6 +86,7 @@ model = transformers.AutoModelForCausalLM.from_pretrained(
 
 #  model.to(device) -> `.to` is not supported for `4-bit` or `8-bit` models.
 model.eval()
+model.to(device)
 if 'RedPajama' in configs['model_name']:
   model.tie_weights()
 
@@ -134,6 +135,7 @@ tokenizer = transformers.AutoTokenizer.from_pretrained(token_model)
 # device=device, -> `.to` is not supported for `4-bit` or `8-bit` models.
 generate_text = transformers.pipeline(
     model=model, tokenizer=tokenizer,
+    device=device,
     pad_token_id=tokenizer.eos_token_id,
     **pipelineconfigs
 )
@@ -193,11 +195,3 @@ with torch.no_grad():
     torch.cuda.empty_cache()
 import gc
 gc.collect()
-
-# COMMAND ----------
-
-
-
-# COMMAND ----------
-
-

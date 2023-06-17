@@ -1,5 +1,5 @@
 # Databricks notebook source
-# MAGIC %pip install -U langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3 bitsandbytes==0.39.0 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
+# MAGIC %pip install -U langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0 sentence-transformers
 
 # COMMAND ----------
 
@@ -64,6 +64,7 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
       )
 
       model.eval()
+      model.to(device)
       #model.to(device) not valid for 4 bit and 8 bit devices
       if 'RedPajama' in configs['model_name']:
         model.tie_weights()
@@ -75,6 +76,7 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
       print('in transformers pipeline')
       generate_text = transformers.pipeline(
           model=model, tokenizer=tokenizer,
+          device=device,
           **self._pipelineconfigs
       )
 
@@ -123,8 +125,8 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
     for question in questions:
       #get relevant documents
       doc = self._qa_chain({'query':question})
-      print(question)
-      print(doc)
+      #print(question)
+      #print(doc)
       result['answer'] = doc['result']
       result['source'] = ','.join([ src.metadata['source'] for src in doc['source_documents']])   
       results.append(result)

@@ -1,6 +1,6 @@
 # Databricks notebook source
 import os
-os.environ['HUGGINGFACEHUB_API_TOKEN'] = dbutils.secrets.get('rkm-scope', 'huggingface')
+os.environ['HUGGINGFACEHUB_API_TOKEN'] = dbutils.secrets.get('rkm-scope', 'huggingface') #mfg-llm-solution-accel2
 os.environ['HF_HOME'] = '/dbfs/temp/hfmfgcache'
 
 # COMMAND ----------
@@ -12,7 +12,7 @@ def dbfsnormalize(path):
 # COMMAND ----------
 
 configs = {}
-configs.update({'vector_persist_dir' : '/dbfs/Users/ramdas.murali@databricks.com/chromadb'})
+configs.update({'vector_persist_dir' : '/dbfs/Users/ramdas.murali@databricks.com/chromadb'}) #/dbfs/temp/faissv1
 configs.update({'data_dir':'/dbfs/Users/ramdas.murali@databricks.com/data/sds_pdf'})
 configs.update({'chunk_size':600})
 configs.update({'chunk_overlap':20})
@@ -33,7 +33,6 @@ configs.update({'serving_endpoint_name':'mfg-llm-qabot-endpoint'})
 
 
 configs.update({'model_name' : 'togethercomputer/RedPajama-INCITE-Instruct-3B-v1'})
-#'togethercomputer/RedPajama-INCITE-Instruct-3B-v1' , "EleutherAI/gpt-neox-20b"
 configs.update({'tokenizer_name' : 'togethercomputer/RedPajama-INCITE-Instruct-3B-v1'})
 
 
@@ -46,8 +45,7 @@ import torch
 automodelconfigs = {
     'trust_remote_code':True,
     'device_map':'auto', 
-    'torch_dtype':torch.float16,
-    'load_in_8bit':True 
+    'torch_dtype':torch.float16
     }
 
 pipelineconfigs = {

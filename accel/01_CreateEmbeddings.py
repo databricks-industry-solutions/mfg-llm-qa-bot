@@ -1,5 +1,5 @@
 # Databricks notebook source
-# MAGIC %pip install -U PyPDF==3.9.1 pycryptodome==3.18.0 langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3 bitsandbytes==0.39.0 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 PyCryptodome==3.18.0 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
+# MAGIC %pip install -U PyPDF==3.9.1 pycryptodome==3.18.0 langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3  einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 PyCryptodome==3.18.0 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
 # MAGIC
 
 # COMMAND ----------
@@ -9,17 +9,6 @@ dbutils.library.restartPython()
 # COMMAND ----------
 
 # MAGIC %run "./utils/configs"
-
-# COMMAND ----------
-
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain.vectorstores import Chroma
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-
-embeddings = HuggingFaceEmbeddings(
-  model_name="sentence-transformers/all-mpnet-base-v2"
-)
-
 
 # COMMAND ----------
 
@@ -140,7 +129,3 @@ content
 # COMMAND ----------
 
 matched_docs
-
-# COMMAND ----------
-
-
