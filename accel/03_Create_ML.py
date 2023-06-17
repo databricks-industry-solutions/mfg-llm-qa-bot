@@ -99,6 +99,9 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
     """
     os.environ['HUGGINGFACEHUB_API_TOKEN'] = self._huggingface_token
     llm = self.loadModel()
+    if llm is None:
+      print('cannot load context because model was not loaded')
+      return
     print('Getting RetrievalQA handle')
     promptTemplate = PromptTemplate(
         template=self._configs['prompt_template'], input_variables=["context", "question"])

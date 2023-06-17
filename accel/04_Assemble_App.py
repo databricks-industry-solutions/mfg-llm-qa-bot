@@ -25,7 +25,7 @@ mfgsdsbot = MLflowMfgBot(
         automodelconfigs,
         pipelineconfigs,
         retriever,
-        dbutils.secrets.get('rkm-scope', 'huggingface'))
+        os.environ['HUGGINGFACEHUB_API_TOKEN'])
 
 
 #for testing locally
