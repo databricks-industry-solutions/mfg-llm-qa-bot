@@ -4,7 +4,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install -U langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
+# MAGIC %pip install -U langchain==0.0.203 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
 
 # COMMAND ----------
 
@@ -33,8 +33,8 @@ embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-
 # Load from FAISS
 vectorstore = FAISS.load_local(vector_persist_dir, embeddings)
 
-def similarity_search(question):
-  matched_docs = vectorstore.similarity_search(question, k=12)
+def similarity_search(question, filter={}, fetch_k=100, k=12):
+  matched_docs = vectorstore.similarity_search(question, filter=filter, fetch_k=fetch_k, k=k)
   sources = []
   content = []
   for doc in matched_docs:
@@ -50,8 +50,9 @@ def similarity_search(question):
   return matched_docs, sources, content
 
 
-matched_docs, sources, content = similarity_search('Who provides recommendations on workspace safety')
+matched_docs, sources, content = similarity_search('Who provides recommendations on workspace safety on Acetone', {'Name':'ACETONE'})
 print(content)
+print(matched_docs)
 
 # COMMAND ----------
 
@@ -148,7 +149,9 @@ promptTemplate = PromptTemplate(
         template=configs['prompt_template'], input_variables=["context", "question"])
 chain_type_kwargs = {"prompt":promptTemplate}
 
-retriever = vectorstore.as_retriever(search_kwargs={"k": configs['num_similar_docs']}, search_type = "similarity") 
+#filterdict={'Name':'ACETALDEHYDE'}
+filterdict={}
+retriever = vectorstore.as_retriever(search_kwargs={"k": configs['num_similar_docs'], "filter":filterdict}, search_type = "similarity")
 
 qa_chain = RetrievalQA.from_chain_type(llm=llm, 
                                        chain_type="stuff", 
@@ -159,7 +162,9 @@ qa_chain = RetrievalQA.from_chain_type(llm=llm,
 
 # COMMAND ----------
 
-res = qa_chain({"query":"When is medical attention needed"})
+filterdict={'Name':'ACETONE'}
+retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":100}
+res = qa_chain({"query":"What happens with acetaldehyde exposure"})
 print(res)
 
 print(res['result'])
@@ -171,11 +176,15 @@ print(res['result'])
 
 # COMMAND ----------
 
+filterdict={}
+retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":100}
 res = qa_chain({"query":"Explain to me the difference between nuclear fission and fusion."})
 res
 
 # COMMAND ----------
 
+filterdict={}
+retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":100}
 res = qa_chain({'query':'what should we do if OSHA is involved?'})
 res
 
@@ -188,10 +197,10 @@ res
 
 # COMMAND ----------
 
-del qa_chain
-del tokenizer
-del model
-with torch.no_grad():
-    torch.cuda.empty_cache()
-import gc
-gc.collect()
+# del qa_chain
+# del tokenizer
+# del model
+# with torch.no_grad():
+#     torch.cuda.empty_cache()
+# import gc
+# gc.collect()

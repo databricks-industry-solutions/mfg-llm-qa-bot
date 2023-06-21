@@ -1,5 +1,5 @@
 # Databricks notebook source
-# MAGIC %pip install -U langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0 sentence-transformers
+# MAGIC %pip install -U langchain==0.0.203 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0 sentence-transformers==2.2.2
 
 # COMMAND ----------
 
@@ -31,6 +31,7 @@ import gc
 
 
 from utils.stoptoken import StopOnTokens
+import json
 
 class MLflowMfgBot(mlflow.pyfunc.PythonModel):
 
@@ -124,9 +125,15 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
       print('qa_chain is not initialized!')
       return results.append(resultErr)
     questions = list(inputs['questions'])
+    searchkwargs={}
+    if "search_kwargs" in inputs:
+      searchkwargs  = inputs['search_kwargs']
+
     print(questions)
     for question in questions:
       #get relevant documents
+      filterdict={}
+      self._retriever.search_kwargs = searchkwargs #{"k": 10, "filter":filterdict, "fetch_k":100}
       doc = self._qa_chain({'query':question})
       #print(question)
       #print(doc)

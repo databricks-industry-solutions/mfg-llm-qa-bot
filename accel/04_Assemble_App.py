@@ -14,7 +14,7 @@
 vector_persist_dir = configs['vector_persist_dir']
 embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
 
-# Load from FAISS
+# # Load from FAISS
 vectorstore = FAISS.load_local(vector_persist_dir, embeddings)
 retriever = vectorstore.as_retriever(search_kwargs={"k": configs['num_similar_docs']}, 
                                                 search_type = "similarity") 
@@ -28,11 +28,16 @@ mfgsdsbot = MLflowMfgBot(
         os.environ['HUGGINGFACEHUB_API_TOKEN'])
 
 
+
+
+# COMMAND ----------
+
 #for testing locally
-#context = mlflow.pyfunc.PythonModelContext(artifacts={"prompt_template":configs['prompt_template']})
-#mfgsdsbot.load_context(context)
-# get response to question
-#mfgsdsbot.predict(context, {'questions':['when should OSHA get involved?']})
+# context = mlflow.pyfunc.PythonModelContext(artifacts={"prompt_template":configs['prompt_template']})
+# mfgsdsbot.load_context(context)
+# # get response to question
+# filterdict={'Name':'ACETONE'}
+# mfgsdsbot.predict(context, {'questions':['when should OSHA get involved on acetone exposure?'], 'search_kwargs':{"k": 10, "filter":filterdict, "fetch_k":100}})
 
 # COMMAND ----------
 
@@ -41,12 +46,12 @@ conda_env = mlflow.pyfunc.get_default_conda_env()
 # define packages required by model
 
 packages = [
-  f'langchain==0.0.197',
+  f'langchain==0.0.203',
   f'transformers==4.30.1',
   f'accelerate==0.20.3',
   f'einops==0.6.1',
   f'xformers==0.0.20',
-  f'sentence-transformers',
+  f'sentence-transformers==2.2.2',
   f'typing-inspect==0.8.0',
   f'typing_extensions==4.5.0',
   f'faiss-cpu==1.7.4', 
@@ -94,9 +99,10 @@ model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}/Pr
 
 # COMMAND ----------
 
-import pandas as pd
+
 # construct search
-search = pd.DataFrame({'questions':['what should we do if OSHA is involved?']})
+filterdict={'Name':'ACETONE'}
+search = ({'questions':['what are some properties of Acetone?'],'search_kwargs':{"k": 10, "filter":filterdict, "fetch_k":100}})
 
 # call model
 y = model.predict(search)
@@ -104,7 +110,10 @@ print(y)
 
 # COMMAND ----------
 
-y=model.predict({'questions':['what should we do if OSHA is involved?']})
+filterdict={'Name':'ACETALDEHYDE'}
+search = {'questions':['what are some properties of Acetaldehyde?'],'search_kwargs':{"k": 10, "filter":filterdict, "fetch_k":100}}
+
+y=model.predict(search)
 print(y)
 
 # COMMAND ----------
