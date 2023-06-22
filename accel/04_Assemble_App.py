@@ -151,3 +151,14 @@ filterdict={'Name':'ACETYL METHYL CARBINOL'}
 search = {'question':['What are the exposure limits for acetyl methyl carbinol cause?'],'filter':[filterdict]}
 y = model.predict(pd.DataFrame.from_dict(search))
 print(y)
+
+# COMMAND ----------
+
+filterdict={'Name':'ACETALDEHYDE'}
+search = {'question':['what are some properties of Acetaldehyde?'],'filter':[filterdict]}
+json = pd.DataFrame.from_dict(search).to_json(orient='split')
+print(json)
+
+# COMMAND ----------
+
+
