@@ -126,4 +126,28 @@ print(y)
 
 # COMMAND ----------
 
+filterdict={}
+search = {'question':['What is the difference between nuclear fusion and fission?'],'filter':[filterdict]}
+y = model.predict(pd.DataFrame.from_dict(search))
+print(y)
 
+# COMMAND ----------
+
+filterdict={}
+search = {'question':['What should we do if OSHA get involved in a chemical event?'],'filter':[filterdict]}
+y = model.predict(pd.DataFrame.from_dict(search))
+print(y)
+
+# COMMAND ----------
+
+filterdict={}
+search = {'question':['What are the exposure limits for acetyl methyl carbinol cause?'],'filter':[filterdict]}
+y = model.predict(pd.DataFrame.from_dict(search))
+print(y)
+
+# COMMAND ----------
+
+filterdict={'Name':'ACETYL METHYL CARBINOL'}
+search = {'question':['What are the exposure limits for acetyl methyl carbinol cause?'],'filter':[filterdict]}
+y = model.predict(pd.DataFrame.from_dict(search))
+print(y)

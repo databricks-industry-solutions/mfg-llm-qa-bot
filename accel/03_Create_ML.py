@@ -59,10 +59,16 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
       device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
 
       print('Loading Model')
-      model = transformers.AutoModelForCausalLM.from_pretrained(
-          self._configs['model_name'],
-          **self._automodelconfigs
-      )
+      if 'flan' not in configs['model_name']:
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+            configs['model_name'],
+            **automodelconfigs
+        )
+      else:
+        model = transformers.AutoModelForSeq2SeqLM.from_pretrained(
+            configs['model_name'],
+            **automodelconfigs
+        )      
 
       model.eval()
       model.to(device)
@@ -78,6 +84,7 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
       generate_text = transformers.pipeline(
           model=model, tokenizer=tokenizer,
           device=device,
+          pad_token_id=tokenizer.eos_token_id,
           **self._pipelineconfigs
       )
 

@@ -80,10 +80,16 @@ device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
 
 print(f"{configs['model_name']} using configs {automodelconfigs}")
 
-model = transformers.AutoModelForCausalLM.from_pretrained(
-    configs['model_name'],
-    **automodelconfigs
-)
+if 'flan' not in configs['model_name']:
+  model = transformers.AutoModelForCausalLM.from_pretrained(
+      configs['model_name'],
+      **automodelconfigs
+  )
+else:
+  model = transformers.AutoModelForSeq2SeqLM.from_pretrained(
+      configs['model_name'],
+      **automodelconfigs
+  )
 
 #  model.to(device) -> `.to` is not supported for `4-bit` or `8-bit` models.
 model.eval()
@@ -103,6 +109,7 @@ print(f"Model loaded on {device}")
 token_model= configs['tokenizer_name']
 tokenizer = transformers.AutoTokenizer.from_pretrained(token_model)
 
+
 # COMMAND ----------
 
 # MAGIC %md
@@ -111,20 +118,23 @@ tokenizer = transformers.AutoTokenizer.from_pretrained(token_model)
 # COMMAND ----------
 
 #If Stopping Criteria is needed
-# from transformers import StoppingCriteria, StoppingCriteriaList
+from transformers import StoppingCriteria, StoppingCriteriaList
 
-# # mtp-7b is trained to add "<|endoftext|>" at the end of generations
-# stop_token_ids = tokenizer.convert_tokens_to_ids(["<|endoftext|>"])
 
-# # define custom stopping criteria object
-# class StopOnTokens(StoppingCriteria):
-#     def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-#         for stop_id in stop_token_ids:
-#             if input_ids[0][-1] == stop_id:
-#                 return True
-#         return False
+# mtp-7b is trained to add "<|endoftext|>" at the end of generations
+stop_token_ids = tokenizer.convert_tokens_to_ids(["<|endoftext|>"])
+print(stop_token_ids)
+print(tokenizer.eos_token)
+print(stop_token_ids)
+# define custom stopping criteria object
+class StopOnTokens(StoppingCriteria):
+  def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+    for stop_id in stop_token_ids:
+      if input_ids[0][-1] == stop_id:
+        return True
+    return False
 
-# stopping_criteria = StoppingCriteriaList([StopOnTokens()])
+stopping_criteria = StoppingCriteriaList([StopOnTokens()])
 
 # COMMAND ----------
 
@@ -138,6 +148,7 @@ generate_text = transformers.pipeline(
     model=model, tokenizer=tokenizer,
     device=device,
     pad_token_id=tokenizer.eos_token_id,
+    #stopping_criteria=stopping_criteria,
     **pipelineconfigs
 )
 
@@ -163,8 +174,8 @@ qa_chain = RetrievalQA.from_chain_type(llm=llm,
 # COMMAND ----------
 
 filterdict={'Name':'ACETONE'}
-retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":100}
-res = qa_chain({"query":"What happens with acetaldehyde exposure"})
+retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":30}
+res = qa_chain({"query":"What issues can acetone exposure cause"})
 print(res)
 
 print(res['result'])
@@ -181,6 +192,8 @@ retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":100}
 res = qa_chain({"query":"Explain to me the difference between nuclear fission and fusion."})
 res
 
+#print(res['result'])
+
 # COMMAND ----------
 
 filterdict={}
@@ -188,6 +201,7 @@ retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":100}
 res = qa_chain({'query':'what should we do if OSHA is involved?'})
 res
 
+#print(res['result'])
 
 
 # COMMAND ----------
@@ -204,3 +218,7 @@ res
 #     torch.cuda.empty_cache()
 # import gc
 # gc.collect()
+
+# COMMAND ----------
+
+
