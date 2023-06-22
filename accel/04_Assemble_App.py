@@ -99,28 +99,28 @@ model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}/Pr
 
 # COMMAND ----------
 
-
+import pandas as pd
 # construct search
 filterdict={'Name':'ACETONE'}
-search = {'question':'what are some properties of Acetone?','filter':[filterdict]}
+search = {'question':['what are some properties of Acetone?'],'filter':[filterdict]}
 
 # call model
-y = model.predict(search)
+y = model.predict(pd.DataFrame.from_dict(search))
 print(y)
 
 # COMMAND ----------
 
 filterdict={'Name':'ACETALDEHYDE'}
-search = {'question':'what are some properties of Acetaldehyde?','filter':[filterdict]}
+search = {'question':['what are some properties of Acetaldehyde?'],'filter':[filterdict]}
 
-y=model.predict(search)
+y=model.predict(pd.DataFrame.from_dict(search))
 print(y)
 
 # COMMAND ----------
 
 filterdict={}
-search = {'question':'When is medical attention needed?','filter':[filterdict]}
-y = model.predict(search)
+search = {'question':['When is medical attention needed?'],'filter':[filterdict]}
+y = model.predict(pd.DataFrame.from_dict(search))
 print(y)
 
 

@@ -124,15 +124,16 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
       print('qa_chain is not initialized!')
       return resultErr
 
-    question = inputs['question']
+    question = inputs.iloc[0][0]
     filter={}
+    filter['k']=10 #num documents to look at for response
     if 'filter' in inputs:
-      filter['filter'] = inputs['filter'][0]
+      filter['filter'] = inputs.iloc[0][1]
       filter['fetch_k']=100 #num of documents to get before applying the filter.
     print(question)
     print(filter)
     #get relevant documents
-    filter['k']=10 #num documents to look at for response
+
     self._retriever.search_kwargs = filter #{"k": 10, "filter":filterdict, "fetch_k":100}
     doc = self._qa_chain({'query':question})
 
