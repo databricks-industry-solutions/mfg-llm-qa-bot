@@ -118,29 +118,28 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
 
 
   def predict(self, context, inputs):
-    results=[]
     result = {'answer':None, 'source':None, 'output_metadata':None}
     resultErr = {'answer':'qa_chain is not initalized!', 'source':'MLFlow Model', 'output_metadata':None}
     if self._qa_chain is None:
       print('qa_chain is not initialized!')
-      return results.append(resultErr)
-    questions = list(inputs['questions'])
-    searchkwargs={}
-    if "search_kwargs" in inputs:
-      searchkwargs  = inputs['search_kwargs']
+      return resultErr
 
-    print(questions)
-    for question in questions:
-      #get relevant documents
-      filterdict={}
-      self._retriever.search_kwargs = searchkwargs #{"k": 10, "filter":filterdict, "fetch_k":100}
-      doc = self._qa_chain({'query':question})
-      #print(question)
-      #print(doc)
-      result['answer'] = doc['result']
-      result['source'] = ','.join([ src.metadata['source'] for src in doc['source_documents']])   
-      results.append(result)
-    return results
+    question = inputs['question']
+    filter={}
+    if 'filter' in inputs:
+      filter['filter'] = inputs['filter'][0]
+      filter['fetch_k']=100 #num of documents to get before applying the filter.
+    print(question)
+    print(filter)
+    #get relevant documents
+    filter['k']=10 #num documents to look at for response
+    self._retriever.search_kwargs = filter #{"k": 10, "filter":filterdict, "fetch_k":100}
+    doc = self._qa_chain({'query':question})
+
+    result['answer'] = doc['result']
+    result['source'] = ','.join([ src.metadata['source'] for src in doc['source_documents']])   
+
+    return result
 
 
 
