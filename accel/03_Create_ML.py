@@ -1,5 +1,5 @@
 # Databricks notebook source
-# MAGIC %pip install -U chromadb==0.3.26 langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3 bitsandbytes==0.39.0 einops==0.6.1 xformers==0.0.20
+# MAGIC %pip install -U langchain==0.0.203 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0 sentence-transformers==2.2.2
 
 # COMMAND ----------
 
@@ -11,137 +11,18 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
-# from langchain import HuggingFacePipeline
-# from transformers import AutoTokenizer, pipeline
-# from langchain.chains import RetrievalQA
-# from langchain import LLMChain
-# class MfgLLMWrapper():
-
-
-#   def __init__(self, llm, retriever, prompt):
-#     self.llm = llm
-#     self.retriever = retriever
-#     self.prompt = prompt
-
-#     chain_type_kwargs = {"prompt":prompt}
-
-#     qa_chain = RetrievalQA.from_chain_type(llm=llm, 
-#                                           chain_type="stuff", 
-#                                           retriever=retriever, 
-#                                           return_source_documents=True,
-#                                           chain_type_kwargs=chain_type_kwargs,
-#                                           verbose=False)
-
-#   # def _is_good_answer(self, answer):
-
-#   #   ''' check if answer is a valid '''
-
-#   #   result = True # default response
-
-#   #   badanswer_phrases = [ # phrases that indicate model produced non-answer
-#   #     "no information", "no context", "don't know", "no clear answer", "sorry", 
-#   #     "no answer", "no mention", "reminder", "context does not provide", "no helpful answer", 
-#   #     "given context", "no helpful", "no relevant", "no question", "not clear",
-#   #     "don't have enough information", " does not have the relevant information", "does not seem to be directly related"
-#   #     ]
-    
-#   #   if answer is None: # bad answer if answer is none
-#   #     results = False
-#   #   else: # bad answer if contains badanswer phrase
-#   #     for phrase in badanswer_phrases:
-#   #       if phrase in answer.lower():
-#   #         result = False
-#   #         break
-    
-#   #   return result
-
-
-#   def _get_answer(self, context, question, timeout_sec=60):
-
-#     '''' get answer from llm with timeout handling '''
-
-#     # default result
-#     result = None
-
-#     # define end time
-#     end_time = time.time() + timeout_sec
-
-#     # try timeout
-#     while time.time() < end_time:
-
-#       # attempt to get a response
-#       try: 
-#         result =  qa_chain.generate([{'context': context, 'question': question}])
-#         break # if successful response, stop looping
-
-#       # if rate limit error...
-#       except openai.error.RateLimitError as rate_limit_error:
-#         if time.time() < end_time: # if time permits, sleep
-#           time.sleep(2)
-#           continue
-#         else: # otherwise, raiser the exception
-#           raise rate_limit_error
-
-#       # if other error, raise it
-#       except Exception as e:
-#         print(f'LLM QA Chain encountered unexpected error: {e}')
-#         raise e
-
-#     return result
-
-
-#   def get_answer(self, question):
-#     ''' get answer to provided question '''
-
-#     # default result
-#     result = {'answer':None, 'source':None, 'output_metadata':None}
-
-#     # remove common abbreviations from question
-#     for abbreviation, full_text in self.abbreviations.items():
-#       pattern = re.compile(fr'\b({abbreviation}|{abbreviation.lower()})\b', re.IGNORECASE)
-#       question = pattern.sub(f"{abbreviation} ({full_text})", question)
-
-#     # get relevant documents
-#     docs = self.retriever.get_relevant_documents(question)
-
-#     # for each doc ...
-#     for doc in docs:
-
-#       # get key elements for doc
-#       text = doc.page_content
-#       source = doc.metadata['source']
-
-#       # get an answer from llm
-#       output = self._get_answer(text, question)
- 
-#       # get output from results
-#       generation = output.generations[0][0]
-#       answer = generation.text
-#       output_metadata = output.llm_output
-
-#       # assemble results if not no_answer
-#       if self._is_good_answer(answer):
-#         result['answer'] = answer
-#         result['source'] = source
-
-#         break # stop looping if good answer
-      
-
-#     return result
-
-# COMMAND ----------
-
 import mlflow
-from mlflow.pyfunc import PythonModelContext
 import torch
-from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceHubEmbeddings
-from langchain.prompts import PromptTemplate
-import torch
-from torch import cuda, bfloat16,float16
 import transformers
-from transformers import AutoTokenizer, pipeline
+
+from mlflow.pyfunc import PythonModelContext
+from langchain.vectorstores import FAISS
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.prompts import PromptTemplate
+from torch import cuda, bfloat16,float16
+
 from langchain import HuggingFacePipeline
+from transformers import AutoTokenizer, pipeline
 from langchain.chains import RetrievalQA
 from transformers import StoppingCriteria, StoppingCriteriaList
 import gc
@@ -149,85 +30,70 @@ import gc
 # COMMAND ----------
 
 
+from utils.stoptoken import StopOnTokens
+import json
+
 class MLflowMfgBot(mlflow.pyfunc.PythonModel):
 
-  # define custom stopping criteria object
-  class StopOnTokens(StoppingCriteria):
-      def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        tokenizer = transformers.AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
-        # mtp-7b is trained to add "<|endoftext|>" at the end of generations
-        stop_token_ids = tokenizer.convert_tokens_to_ids(["<|endoftext|>"])
-        for stop_id in stop_token_ids:
-          if input_ids[0][-1] == stop_id:
-            return True
-        return False
 
-  def __init__(self, prompt_template_str, chroma_persist_dir, huggingface_token, temperature=0.8, max_new_tokens=128, num_similar_docs=5):
-    self._prompt_template_str = prompt_template_str
-    self._chroma_persist_dir = chroma_persist_dir
-    self._temperature = temperature
-    self._max_new_tokens = max_new_tokens
-    self._num_similar_docs = num_similar_docs
+  def __init__(self, configs, automodelconfigs, pipelineconfigs, retriever, huggingface_token):
+    self._configs = configs
+    self._automodelconfigs = automodelconfigs
+    self._pipelineconfigs = pipelineconfigs
+    self._retriever = retriever
     self._huggingface_token = huggingface_token
     self._qa_chain = None
   
-  # def __getstate__(self):
-  #   d = dict(self.__dict__).copy()
-  #   del d['_qa_chain']
-  #   return d
+  def __getstate__(self):
+    d = dict(self.__dict__).copy()
+    del d['_qa_chain']
+    return d
 
 
   def loadModel(self):
     try:
-      print(f'Prompt {self._prompt_template_str}' )
-      print(f'Chroma dir {self._chroma_persist_dir}' )   
-      print(f'temperature {self._temperature}' )   
-      print(f'Max new tokens {self._max_new_tokens}' )   
-      print(f'Similar Docs {self._num_similar_docs}' )   
+      print(f'configs {self._configs}' )
+      print(f'model configs {self._automodelconfigs}' )   
+      print(f'pipeline configs {self._pipelineconfigs}' )        
 
       device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
-      print('Loading Vectorstore')
-      vectorstore = Chroma(
-              collection_name="mfg_collection",
-              persist_directory=self._chroma_persist_dir,
-              embedding_function=HuggingFaceHubEmbeddings(repo_id='sentence-transformers/all-MiniLM-L6-v2'))
 
       print('Loading Model')
-      model = transformers.AutoModelForCausalLM.from_pretrained(
-          'mosaicml/mpt-7b-instruct',
-          trust_remote_code=True,
-          device_map='auto', torch_dtype=float16, load_in_8bit=True, #rkm testing
-          #torch_dtype=bfloat16
-      )
+      if 'flan' not in configs['model_name']:
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+            configs['model_name'],
+            **automodelconfigs
+        )
+      else:
+        model = transformers.AutoModelForSeq2SeqLM.from_pretrained(
+            configs['model_name'],
+            **automodelconfigs
+        )      
 
       model.eval()
-      #model.to(device) #rkmtesting
-      print(f"Model loaded on {device}")
-      print('Loading tokenizer')
-      tokenizer = transformers.AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
-      stopping_criteria = StoppingCriteriaList([self.StopOnTokens()])
+      model.to(device)
+      #model.to(device) not valid for 4 bit and 8 bit devices
+      if 'RedPajama' in configs['model_name']:
+        model.tie_weights()
 
+      print(f"Model loaded on {device}")
+
+      print('Loading tokenizer')
+      tokenizer = transformers.AutoTokenizer.from_pretrained(self._configs['tokenizer_name'])
+      print('in transformers pipeline')
       generate_text = transformers.pipeline(
           model=model, tokenizer=tokenizer,
-          return_full_text=True,  # langchain expects the full text
-          task='text-generation',
-          #device=device, #rkmtesting
-          # we pass model parameters here too
-          stopping_criteria=stopping_criteria,  # without this model will ramble
-          temperature=self._temperature,  # 'randomness' of outputs, 0.0 is the min and 1.0 the max
-          top_p=0.80,  # select from top tokens whose probability add up to 15%
-          top_k=0,  # select from top 0 tokens (because zero, relies on top_p)
-          max_new_tokens=self._max_new_tokens,  # mex number of tokens to generate in the output
-          repetition_penalty=1.1 #, without this output begins repeating
-          #eos_token_id=tokenizer.eos_token_id          
+          device=device,
+          pad_token_id=tokenizer.eos_token_id,
+          **self._pipelineconfigs
       )
 
-      print('Creating Pipeline')
+      print('Creating HF Pipeline')
       llm = HuggingFacePipeline(pipeline=generate_text)
 
-      retriever = vectorstore.as_retriever(search_kwargs={"k": self._num_similar_docs}) #, "search_type" : "similarity"
-      return (llm, retriever)
+      return llm
     except Exception as e:
+      print("ErrorDel")
       print(e)
       _qa_chain=None
       gc.collect()
@@ -240,15 +106,18 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
         context: MLflow context where the model artifact is stored.
     """
     os.environ['HUGGINGFACEHUB_API_TOKEN'] = self._huggingface_token
-    llm, retriever = self.loadModel()
+    llm = self.loadModel()
+    if llm is None:
+      print('cannot load context because model was not loaded')
+      return
     print('Getting RetrievalQA handle')
     promptTemplate = PromptTemplate(
-        template=self._prompt_template_str, input_variables=["context", "question"])
+        template=self._configs['prompt_template'], input_variables=["context", "question"])
     
     chain_type_kwargs = {"prompt":promptTemplate}    
     self._qa_chain = RetrievalQA.from_chain_type(llm=llm, 
                                           chain_type="stuff", 
-                                          retriever=retriever, 
+                                          retriever=self._retriever, 
                                           return_source_documents=True,
                                           chain_type_kwargs=chain_type_kwargs,
                                           verbose=False)
@@ -256,134 +125,30 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
 
 
   def predict(self, context, inputs):
-    results=[]
     result = {'answer':None, 'source':None, 'output_metadata':None}
     resultErr = {'answer':'qa_chain is not initalized!', 'source':'MLFlow Model', 'output_metadata':None}
     if self._qa_chain is None:
       print('qa_chain is not initialized!')
-      return results.append(resultErr)
-    questions = list(inputs['questions'])
-    print(questions)
-    for question in questions:
-      #get relevant documents
-      doc = self._qa_chain({'query':question})
-      print(question)
-      print(doc)
-      result['answer'] = doc['result']
-      result['source'] = ','.join([ src.metadata['source'] for src in doc['source_documents']])   
-      results.append(result)
-    return results
+      return resultErr
 
+    question = inputs.iloc[0][0]
+    filter={}
+    filter['k']=10 #num documents to look at for response
+    if 'filter' in inputs:
+      filter['filter'] = inputs.iloc[0][1]
+      filter['fetch_k']=100 #num of documents to get before applying the filter.
+    print(question)
+    print(filter)
+    #get relevant documents
 
-# COMMAND ----------
+    self._retriever.search_kwargs = filter #{"k": 10, "filter":filterdict, "fetch_k":100}
+    doc = self._qa_chain({'query':question})
 
+    result['answer'] = doc['result']
+    result['source'] = ','.join([ src.metadata['source'] for src in doc['source_documents']])   
 
-# instantiate bot object
-mfgsdsbot = MLflowMfgBot(
-        configs['prompt_template'], 
-        configs['chroma_persist_dir'],
-        dbutils.secrets.get('rkm-scope', 'huggingface'),
-        configs['temperature'], 
-        configs['max_new_tokens'],
-        configs['num_similar_docs'])
+    return result
 
-#context = mlflow.pyfunc.PythonModelContext(artifacts={"prompt_template":configs['prompt_template']})
-
-#mfgsdsbot.load_context(context)
-# get response to question
-
-
-# COMMAND ----------
-
-
-
-# COMMAND ----------
-
-#mfgsdsbot.predict(context, {'questions':['When is medical attention needed?']})
-
-# COMMAND ----------
-
-# MAGIC %fs ls /Users/ramdas.murali@databricks.com/data/gptmodel
-
-# COMMAND ----------
-
-# get base environment configuration
-conda_env = mlflow.pyfunc.get_default_conda_env()
-
-# define packages required by model
-packages = [
-  f'chromadb==0.3.26',
-  f'langchain==0.0.197',
-  f'transformers==4.30.1',
-  f'accelerate==0.20.3',
-  f'bitsandbytes==0.39.0',
-  f'einops==0.6.1',
-  f'xformers==0.0.20'
-  ]
-
-# add required packages to environment configuration
-conda_env['dependencies'][-1]['pip'] += packages
-
-print(
-  conda_env
-  )
-
-# COMMAND ----------
-
-
-
-# persist model to mlflow
-with mlflow.start_run():
-  _ = (
-    mlflow.pyfunc.log_model(
-      python_model=mfgsdsbot,
-      conda_env=conda_env,
-      artifact_path='mfgmodel',
-      registered_model_name=configs['registered_model_name']
-      )
-    )
-
-# COMMAND ----------
-
-print(configs['prompt_template'])
-
-# COMMAND ----------
-
-client = mlflow.MlflowClient()
-
-latest_version = client.get_latest_versions(configs['registered_model_name'], stages=['None'])[0].version
-print(latest_version)
-client.transition_model_version_stage(
-    name=configs['registered_model_name'],
-    version=latest_version,
-    stage='Production',
-    archive_existing_versions=True
-)
-
-# COMMAND ----------
-
-model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}/Production")
-
-
-# COMMAND ----------
-
-import pandas as pd
-# construct search
-search = pd.DataFrame({'questions':['what should we do if OSHA is involved?']})
-
-# call model
-y = model.predict(search)
-print(y)
-
-# COMMAND ----------
-
-y=model.predict({'questions':['what should we do if OSHA is involved?']})
-print(y)
-
-# COMMAND ----------
-
-y=model.predict({'questions':['When is medical attention needed?']})
-print(y)
 
 
 # COMMAND ----------

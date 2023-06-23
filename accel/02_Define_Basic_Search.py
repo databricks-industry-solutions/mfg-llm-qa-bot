@@ -4,7 +4,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install -U chromadb==0.3.26 langchain==0.0.197 transformers==4.30.1 accelerate==0.20.3 bitsandbytes==0.39.0 einops==0.6.1 xformers==0.0.20
+# MAGIC %pip install -U langchain==0.0.203 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
 
 # COMMAND ----------
 
@@ -16,20 +16,25 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
-chroma_persist_dir = configs['chroma_persist_dir']
-from langchain.vectorstores import Chroma
-from langchain.embeddings import HuggingFaceHubEmbeddings
+from langchain.vectorstores import FAISS
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.prompts import PromptTemplate
+from torch import cuda, bfloat16,float16
+import transformers
+from langchain import HuggingFacePipeline
+from transformers import AutoTokenizer, pipeline
+from langchain.chains import RetrievalQA
 
+# COMMAND ----------
 
-vectorstore = Chroma(
-        collection_name="mfg_collection",
-        persist_directory=chroma_persist_dir,
-        embedding_function=HuggingFaceHubEmbeddings(repo_id='sentence-transformers/all-MiniLM-L6-v2')
-)
+vector_persist_dir = configs['vector_persist_dir']
+embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
 
+# Load from FAISS
+vectorstore = FAISS.load_local(vector_persist_dir, embeddings)
 
-def similarity_search(question):
-  matched_docs = vectorstore.similarity_search(question, k=12)
+def similarity_search(question, filter={}, fetch_k=100, k=12):
+  matched_docs = vectorstore.similarity_search(question, filter=filter, fetch_k=fetch_k, k=k)
   sources = []
   content = []
   for doc in matched_docs:
@@ -45,25 +50,9 @@ def similarity_search(question):
   return matched_docs, sources, content
 
 
-matched_docs, sources, content = similarity_search('Who provides recommendations on workspace safety')
+matched_docs, sources, content = similarity_search('Who provides recommendations on workspace safety on Acetone', {'Name':'ACETONE'})
 print(content)
-
-# COMMAND ----------
-
-from langchain.prompts import PromptTemplate
-
-def getPromptTemplate():
-  prompt_template = """Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
-
-  {context}
-
-  Question: {question}"""
-
-  PROMPT = PromptTemplate(
-      template=prompt_template, input_variables=["context", "question"]
-  )
-
-  return PROMPT
+print(matched_docs)
 
 # COMMAND ----------
 
@@ -87,20 +76,27 @@ def getPromptTemplate():
 
 # COMMAND ----------
 
-from torch import cuda, bfloat16,float16
-import transformers
-
 device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
 
-model = transformers.AutoModelForCausalLM.from_pretrained(
-    'mosaicml/mpt-7b-instruct',
-    trust_remote_code=True,
-    device_map='auto', torch_dtype=float16, load_in_8bit=True, #rkm testing
-    #torch_dtype=bfloat16,
-    max_seq_len=1440
-)
+print(f"{configs['model_name']} using configs {automodelconfigs}")
+
+if 'flan' not in configs['model_name']:
+  model = transformers.AutoModelForCausalLM.from_pretrained(
+      configs['model_name'],
+      **automodelconfigs
+  )
+else:
+  model = transformers.AutoModelForSeq2SeqLM.from_pretrained(
+      configs['model_name'],
+      **automodelconfigs
+  )
+
+#  model.to(device) -> `.to` is not supported for `4-bit` or `8-bit` models.
 model.eval()
-#model.to(device)
+model.to(device)
+if 'RedPajama' in configs['model_name']:
+  model.tie_weights()
+
 print(f"Model loaded on {device}")
 
 # COMMAND ----------
@@ -110,7 +106,9 @@ print(f"Model loaded on {device}")
 
 # COMMAND ----------
 
-tokenizer = transformers.AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b")
+token_model= configs['tokenizer_name']
+tokenizer = transformers.AutoTokenizer.from_pretrained(token_model)
+
 
 # COMMAND ----------
 
@@ -119,21 +117,22 @@ tokenizer = transformers.AutoTokenizer.from_pretrained("EleutherAI/gpt-neox-20b"
 
 # COMMAND ----------
 
-#not Used
-
-import torch
+#If Stopping Criteria is needed
 from transformers import StoppingCriteria, StoppingCriteriaList
+
 
 # mtp-7b is trained to add "<|endoftext|>" at the end of generations
 stop_token_ids = tokenizer.convert_tokens_to_ids(["<|endoftext|>"])
-
+print(stop_token_ids)
+print(tokenizer.eos_token)
+print(stop_token_ids)
 # define custom stopping criteria object
 class StopOnTokens(StoppingCriteria):
-    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
-        for stop_id in stop_token_ids:
-            if input_ids[0][-1] == stop_id:
-                return True
-        return False
+  def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
+    for stop_id in stop_token_ids:
+      if input_ids[0][-1] == stop_id:
+        return True
+    return False
 
 stopping_criteria = StoppingCriteriaList([StopOnTokens()])
 
@@ -144,32 +143,26 @@ stopping_criteria = StoppingCriteriaList([StopOnTokens()])
 
 # COMMAND ----------
 
+# device=device, -> `.to` is not supported for `4-bit` or `8-bit` models.
 generate_text = transformers.pipeline(
     model=model, tokenizer=tokenizer,
-    return_full_text=True,  # langchain expects the full text
-    task='text-generation',
-    #device=device,
-    # we pass model parameters here too
-    stopping_criteria=stopping_criteria,  # without this model will ramble
-    temperature=configs['temperature'],  # 'randomness' of outputs, 0.0 is the min and 1.0 the max
-    top_p=0.80,  # select from top tokens whose probability add up to 80%
-    top_k=0,  # select from top 0 tokens (because zero, relies on top_p)
-    max_new_tokens=configs['max_new_tokens'],  # mex number of tokens to generate in the output
-    repetition_penalty=1.1  # without this output begins repeating
+    device=device,
+    pad_token_id=tokenizer.eos_token_id,
+    #stopping_criteria=stopping_criteria,
+    **pipelineconfigs
 )
 
 # COMMAND ----------
 
-from langchain import HuggingFacePipeline
-from transformers import AutoTokenizer, pipeline
-from langchain.chains import RetrievalQAWithSourcesChain, RetrievalQA
-from langchain import LLMChain
-
-chain_type_kwargs = {"prompt":getPromptTemplate()}
-
 llm = HuggingFacePipeline(pipeline=generate_text)
 
-retriever = vectorstore.as_retriever(search_kwargs={"k": configs['num_similar_docs']}) #, "search_type" : "similarity"
+promptTemplate = PromptTemplate(
+        template=configs['prompt_template'], input_variables=["context", "question"])
+chain_type_kwargs = {"prompt":promptTemplate}
+
+#filterdict={'Name':'ACETALDEHYDE'}
+filterdict={}
+retriever = vectorstore.as_retriever(search_kwargs={"k": configs['num_similar_docs'], "filter":filterdict}, search_type = "similarity")
 
 qa_chain = RetrievalQA.from_chain_type(llm=llm, 
                                        chain_type="stuff", 
@@ -180,7 +173,9 @@ qa_chain = RetrievalQA.from_chain_type(llm=llm,
 
 # COMMAND ----------
 
-res = qa_chain({"query":"When is medical attention needed"})
+filterdict={'Name':'ACETONE'}
+retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":30}
+res = qa_chain({"query":"What issues can acetone exposure cause"})
 print(res)
 
 print(res['result'])
@@ -192,14 +187,21 @@ print(res['result'])
 
 # COMMAND ----------
 
+filterdict={}
+retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":100}
 res = qa_chain({"query":"Explain to me the difference between nuclear fission and fusion."})
 res
 
+#print(res['result'])
+
 # COMMAND ----------
 
+filterdict={}
+retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":100}
 res = qa_chain({'query':'what should we do if OSHA is involved?'})
 res
 
+#print(res['result'])
 
 
 # COMMAND ----------
@@ -209,21 +211,13 @@ res
 
 # COMMAND ----------
 
-del qa_chain
-del tokenizer
-del model
-cuda.empty_cache()
-
-
-# COMMAND ----------
-
-import gc
-gc.collect()
-
-# COMMAND ----------
-
-with torch.no_grad():
-    torch.cuda.empty_cache()
+# del qa_chain
+# del tokenizer
+# del model
+# with torch.no_grad():
+#     torch.cuda.empty_cache()
+# import gc
+# gc.collect()
 
 # COMMAND ----------
 
