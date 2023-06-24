@@ -45,7 +45,7 @@ configs.update({'tokenizer_name' : 'bigscience/bloom-7b1'})
 
 #torch_dtype=float16, #for gpu
 #torch_dtype=bfloat16, #for cpu
-#load_in_8bit=True #, 
+#load_in_8bit=True #, #8 bit stuff needs accelerate which I couldnt get to work with model serving
 #max_seq_len=1440 #rkm removed for redpajama
 
 import torch
