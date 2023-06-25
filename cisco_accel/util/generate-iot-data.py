@@ -1,10 +1,10 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC 
+# MAGIC
 # MAGIC ## IoT Data Generation
-# MAGIC 
+# MAGIC
 # MAGIC <img src="https://github.com/databricks-industry-solutions/iot-anomaly-detection/raw/main/resource/images/02_generate_iot_data.jpg">
-# MAGIC 
+# MAGIC
 # MAGIC In this notebook, we use `dbldatagen` to generate fictitious data and push into a Kafka topic.
 
 # COMMAND ----------
