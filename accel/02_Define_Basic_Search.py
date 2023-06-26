@@ -1,6 +1,6 @@
 # Databricks notebook source
 # MAGIC %md
-# MAGIC #### Open source MTP-7B model in both Hugging Face transformers and LangChain.
+# MAGIC #### Open source tiiuae/falcon-7b model in both Hugging Face transformers and LangChain.
 
 # COMMAND ----------
 
@@ -64,7 +64,7 @@ print(matched_docs)
 # MAGIC %md
 # MAGIC The first thing we need to do is initialize a `text-generation` pipeline with Hugging Face transformers. The Pipeline requires three things that we must initialize first, those are:
 # MAGIC
-# MAGIC * A LLM, in this case it will be `mosaicml/mpt-7b-instruct`.
+# MAGIC * A LLM, in this case it will be `tiiuae/falcon-7b`.
 # MAGIC
 # MAGIC * The respective tokenizer for the model.
 # MAGIC
@@ -102,7 +102,7 @@ print(f"Model loaded on {device}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC The pipeline requires a tokenizer which handles the translation of human readable plaintext to LLM readable token IDs. The MPT-7B model was trained using the `EleutherAI/gpt-neox-20b` tokenizer, which we initialize like so:
+# MAGIC The pipeline requires a tokenizer which handles the translation of human readable plaintext to LLM readable token IDs. The tiiuae/falcon-7B model was trained using the `EleutherAI/gpt-neox-20b` tokenizer, which we initialize like so:
 
 # COMMAND ----------
 
@@ -174,7 +174,7 @@ qa_chain = RetrievalQA.from_chain_type(llm=llm,
 # COMMAND ----------
 
 filterdict={'Name':'ACETONE'}
-retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":30}
+retriever.search_kwargs = {"k": 6, "filter":filterdict, "fetch_k":30}
 res = qa_chain({"query":"What issues can acetone exposure cause"})
 print(res)
 
@@ -188,7 +188,7 @@ print(res['result'])
 # COMMAND ----------
 
 filterdict={}
-retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":100}
+retriever.search_kwargs = {"k": 6, "filter":filterdict, "fetch_k":20}
 res = qa_chain({"query":"Explain to me the difference between nuclear fission and fusion."})
 res
 
@@ -197,7 +197,7 @@ res
 # COMMAND ----------
 
 filterdict={}
-retriever.search_kwargs = {"k": 10, "filter":filterdict, "fetch_k":100}
+retriever.search_kwargs = {"k": 6, "filter":filterdict, "fetch_k":40}
 res = qa_chain({'query':'what should we do if OSHA is involved?'})
 res
 
