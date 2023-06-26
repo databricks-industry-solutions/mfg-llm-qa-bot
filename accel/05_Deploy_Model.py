@@ -17,7 +17,14 @@ from mlflow.utils.databricks_utils import get_databricks_host_creds
 
 # COMMAND ----------
 
-latest_version = mlflow.MlflowClient().get_latest_versions(configs['registered_model_name'], stages=['Production'])[0].version
+client = mlflow.MlflowClient()
+
+latest_version = client.get_latest_versions(configs['registered_model_name'], stages=['Production'])[0].version
+print(latest_version)
+# gather other inputs the API needs
+serving_host = spark.conf.get("spark.databricks.workspaceUrl")
+creds = get_databricks_host_creds()
+
 
 # COMMAND ----------
 
@@ -31,20 +38,28 @@ latest_version = mlflow.MlflowClient().get_latest_versions(configs['registered_m
 
 
 served_models = [
-    {
-      "name": "current",
+  {
+    "name": configs['serving_endpoint_name'],
+    "config":{
+    "served_models": [{
       "model_name": configs['registered_model_name'],
       "model_version": latest_version,
+      "workload_type": "GPU_MEDIUM",
       "workload_size": "Small",
-      "scale_to_zero_enabled": "true",
-      "env_vars": [{
-        "env_var_name": "HUGGINGFACEHUB_API_TOKEN",
-        "secret_scope": configs['HF_key_secret_scope'],
-        "secret_key": configs['HF_key_secret_key'],
-      }]
+      "scale_to_zero_enabled": 'false'}]   
     }
+  },
+  {
+    "served_models": [{
+      "model_name": configs['registered_model_name'],
+      "model_version": latest_version,
+      "workload_type": "GPU_MEDIUM",
+      "workload_size": "Medium",
+      "scale_to_zero_enabled": 'false'}]   
+  }  
 ]
-traffic_config = {"routes": [{"served_model_name": "current", "traffic_percentage": "100"}]}
+
+#"traffic_config": {"routes": [{"served_model_name": configs['serving_endpoint_name'], "traffic_percentage": "100"}]}
 
 # COMMAND ----------
 
@@ -56,14 +71,18 @@ def endpoint_exists():
   return response.status_code == 200
 
 def wait_for_endpoint():
+  import datetime
   """Wait until deployment is ready, then return endpoint config"""
   headers = { 'Authorization': f'Bearer {creds.token}' }
   endpoint_url = f"https://{serving_host}/api/2.0/serving-endpoints/{configs['serving_endpoint_name']}"
   response = requests.request(method='GET', headers=headers, url=endpoint_url)
   while response.json()["state"]["ready"] == "NOT_READY" or response.json()["state"]["config_update"] == "IN_PROGRESS" : # if the endpoint isn't ready, or undergoing config update
-    print("Waiting 30s for deployment or update to finish")
-    time.sleep(30)
+    print("Waiting 45s for deployment or update to finish")
+    time.sleep(45)
     response = requests.request(method='GET', headers=headers, url=endpoint_url)
+    now = datetime.datetime.now()
+    print(now.time())
+    print(response.json())
     response.raise_for_status()
   return response.json()
 
@@ -71,73 +90,48 @@ def create_endpoint():
   """Create serving endpoint and wait for it to be ready"""
   print(f"Creating new serving endpoint: {configs['serving_endpoint_name']}")
   endpoint_url = f'https://{serving_host}/api/2.0/serving-endpoints'
+  request_data = served_models[0]
+  print(endpoint_url)
+  print(json.dumps(request_data))
   headers = { 'Authorization': f'Bearer {creds.token}' }
-  request_data = {"name": configs['serving_endpoint_name'], "config": {"served_models": served_models}}
-  json_bytes = json.dumps(request_data).encode('utf-8')
-  response = requests.post(endpoint_url, data=json_bytes, headers=headers)
-  response.raise_for_status()
-  wait_for_endpoint()
-  displayHTML(f"""Created the <a href="/#mlflow/endpoints/{configs['serving_endpoint_name']}" target="_blank">{config['serving_endpoint_name']}</a> serving endpoint""")
+  response = requests.post(endpoint_url, json=request_data, headers=headers)
+  print(response.json())
+  displayHTML(f"""Created the <a href="/#mlflow/endpoints/{configs['serving_endpoint_name']}" target="_blank">{configs['serving_endpoint_name']}</a> serving endpoint""")
   
 def update_endpoint():
   """Update serving endpoint and wait for it to be ready"""
   print(f"Updating existing serving endpoint: {configs['serving_endpoint_name']}")
   endpoint_url = f"https://{serving_host}/api/2.0/serving-endpoints/{configs['serving_endpoint_name']}/config"
-  headers = { 'Authorization': f'Bearer {creds.token}' }
-  request_data = { "served_models": served_models, "traffic_config": traffic_config }
-  json_bytes = json.dumps(request_data).encode('utf-8')
-  response = requests.put(endpoint_url, data=json_bytes, headers=headers)
-  response.raise_for_status()
+  request_data = served_models[1]
+  print(endpoint_url)
+  print(json.dumps(request_data))  
+  headers = { 'Authorization': f'Bearer {creds.token}' }  
+  response = requests.put(endpoint_url, json=request_data, headers=headers)
+  print(response.json())
   wait_for_endpoint()
   displayHTML(f"""Updated the <a href="/#mlflow/endpoints/{configs['serving_endpoint_name']}" target="_blank">{configs['serving_endpoint_name']}</a> serving endpoint""")
 
+
+def list_endpoints():
+  """Update serving endpoint and wait for it to be ready"""
+  print(f"Updating existing serving endpoint: {configs['serving_endpoint_name']}")
+  endpoint_url = f"https://{serving_host}/api/2.0/serving-endpoints"
+  headers = { 'Authorization': f'Bearer {creds.token}' }
+  response = requests.get(endpoint_url, headers=headers)
+
+  lst = json.loads(response.text)['endpoints']
+
+  for endpoint in lst:
+    displayHTML(f'<font face="courier">{endpoint}</font>')
+
 # COMMAND ----------
 
-# gather other inputs the API needs
-serving_host = spark.conf.get("spark.databricks.workspaceUrl")
-creds = get_databricks_host_creds()
 
-# kick off endpoint creation/update
+# list_endpoints()
+#kick off endpoint creation/update
 if not endpoint_exists():
   create_endpoint()
+  wait_for_endpoint()
 else:
   update_endpoint()
-
-# COMMAND ----------
-
-import os
-import requests
-import numpy as np
-import pandas as pd
-import json
-
-endpoint_url = f"""https://{serving_host}/serving-endpoints/{config['serving_endpoint_name']}/invocations"""
-
-
-def create_tf_serving_json(data):
-    return {
-        "inputs": {name: data[name].tolist() for name in data.keys()}
-        if isinstance(data, dict)
-        else data.tolist()
-    }
-
-
-def score_model(dataset):
-    url = endpoint_url
-    headers = {
-        "Authorization": f"Bearer {creds.token}",
-        "Content-Type": "application/json",
-    }
-    ds_dict = (
-        {"dataframe_split": dataset.to_dict(orient="split")}
-        if isinstance(dataset, pd.DataFrame)
-        else create_tf_serving_json(dataset)
-    )
-    data_json = json.dumps(ds_dict, allow_nan=True)
-    response = requests.request(method="POST", headers=headers, url=url, data=data_json)
-    if response.status_code != 200:
-        raise Exception(
-            f"Request failed with status {response.status_code}, {response.text}"
-        )
-
-    return response.json()
+  wait_for_endpoint()

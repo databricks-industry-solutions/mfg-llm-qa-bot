@@ -133,15 +133,15 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
 
     question = inputs.iloc[0][0]
     filter={}
-    filter['k']=10 #num documents to look at for response
+    filter['k']=6 #num documents to look at for response
     if 'filter' in inputs:
       filter['filter'] = inputs.iloc[0][1]
-      filter['fetch_k']=100 #num of documents to get before applying the filter.
+      filter['fetch_k']=30 #num of documents to get before applying the filter.
     print(question)
     print(filter)
     #get relevant documents
 
-    self._retriever.search_kwargs = filter #{"k": 10, "filter":filterdict, "fetch_k":100}
+    self._retriever.search_kwargs = filter #{"k": 6, "filter":filterdict, "fetch_k":20}
     doc = self._qa_chain({'query':question})
 
     result['answer'] = doc['result']
