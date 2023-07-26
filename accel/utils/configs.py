@@ -1,6 +1,6 @@
 # Databricks notebook source
 import os
-os.environ['HUGGINGFACEHUB_API_TOKEN'] = dbutils.secrets.get('rkm-scope', 'huggingface') #mfg-llm-solution-accel2
+os.environ['HUGGINGFACEHUB_API_TOKEN'] = dbutils.secrets.get('mfg-llm-solution-accel2', 'huggingface')    #mfg-llm-solution-accel2 #rkm-scope
 os.environ['HF_HOME'] = '/dbfs/temp/hfmfgcache'
 
 # COMMAND ----------
