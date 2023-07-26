@@ -70,8 +70,6 @@ print(content)
 
 # COMMAND ----------
 
-
-
 embeddings = OpenAIEmbeddings(openai_api_key=dbutils.secrets.get('rkm-scope', 'chatgpt'))
 instance = Chroma(persist_directory=chroma_persist_dir, embedding_function=embeddings)
 
@@ -258,7 +256,3 @@ model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}/Pr
 
 y=model.predict({'questions':['what should we do if OSHA is involved?']})
 print(y)
-
-# COMMAND ----------
-
-

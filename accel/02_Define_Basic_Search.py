@@ -4,7 +4,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install -U langchain==0.0.203 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
+# MAGIC %pip install -U langchain==0.0.203 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0 
 
 # COMMAND ----------
 
@@ -79,21 +79,32 @@ print(matched_docs)
 device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
 
 print(f"{configs['model_name']} using configs {automodelconfigs}")
-
-if 'flan' not in configs['model_name']:
+if 'mpt' in configs['model_name']:
+  modconfig = transformers.AutoConfig.from_pretrained(configs['model_name'] ,
+    trust_remote_code=True
+  )
+  #modconfig.attn_config['attn_impl'] = 'triton'
   model = transformers.AutoModelForCausalLM.from_pretrained(
+      configs['model_name'],
+      config=modconfig,
+      **automodelconfigs
+  )
+elif 'flan' in configs['model_name']:
+  model = transformers.AutoModelForSeq2SeqLM.from_pretrained(
       configs['model_name'],
       **automodelconfigs
   )
 else:
-  model = transformers.AutoModelForSeq2SeqLM.from_pretrained(
+  model = transformers.AutoModelForCausalLM.from_pretrained(
       configs['model_name'],
       **automodelconfigs
   )
 
 #  model.to(device) -> `.to` is not supported for `4-bit` or `8-bit` models.
-model.eval()
-model.to(device)
+listmc = automodelconfigs.keys()
+if 'load_in_4bit' not in listmc and 'load_in_8bit' not in listmc:
+  model.eval()
+  model.to(device)
 if 'RedPajama' in configs['model_name']:
   model.tie_weights()
 
@@ -144,13 +155,21 @@ stopping_criteria = StoppingCriteriaList([StopOnTokens()])
 # COMMAND ----------
 
 # device=device, -> `.to` is not supported for `4-bit` or `8-bit` models.
-generate_text = transformers.pipeline(
-    model=model, tokenizer=tokenizer,
-    device=device,
-    pad_token_id=tokenizer.eos_token_id,
-    #stopping_criteria=stopping_criteria,
-    **pipelineconfigs
-)
+if 'load_in_4bit' not in listmc and 'load_in_8bit' not in listmc:
+  generate_text = transformers.pipeline(
+      model=model, tokenizer=tokenizer,
+      device=device,
+      pad_token_id=tokenizer.eos_token_id,
+      #stopping_criteria=stopping_criteria,
+      **pipelineconfigs
+  )
+else:
+  generate_text = transformers.pipeline(
+      model=model, tokenizer=tokenizer,
+      pad_token_id=tokenizer.eos_token_id,
+      #stopping_criteria=stopping_criteria,
+      **pipelineconfigs
+  )  
 
 # COMMAND ----------
 
@@ -173,7 +192,7 @@ qa_chain = RetrievalQA.from_chain_type(llm=llm,
 
 # COMMAND ----------
 
-filterdict={'Name':'ACETONE'}
+#filterdict={'Name':'ACETONE'}
 retriever.search_kwargs = {"k": 6, "filter":filterdict, "fetch_k":30}
 res = qa_chain({"query":"What issues can acetone exposure cause"})
 print(res)
@@ -218,6 +237,10 @@ res
 #     torch.cuda.empty_cache()
 # import gc
 # gc.collect()
+
+# COMMAND ----------
+
+# MAGIC %fs ls /Users/ramdas.murali@databricks.com/
 
 # COMMAND ----------
 

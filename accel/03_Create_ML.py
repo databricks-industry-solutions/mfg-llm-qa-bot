@@ -64,29 +64,50 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
             configs['model_name'],
             **automodelconfigs
         )
+      elif 'mpt' in configs['model_name']:
+        modconfig = transformers.AutoConfig.from_pretrained(configs['model_name'] ,
+        trust_remote_code=True
+        )
+        #modconfig.attn_config['attn_impl'] = 'triton'
+        model = transformers.AutoModelForCausalLM.from_pretrained(
+        configs['model_name'],
+        config=modconfig,
+        **automodelconfigs
+        )     
       else:
         model = transformers.AutoModelForSeq2SeqLM.from_pretrained(
             configs['model_name'],
             **automodelconfigs
         )      
 
-      model.eval()
-      model.to(device)
       #model.to(device) not valid for 4 bit and 8 bit devices
+      listmc = automodelconfigs.keys()
+      if 'load_in_4bit' not in listmc and 'load_in_8bit' not in listmc:
+        model.eval()
+        model.to(device)
       if 'RedPajama' in configs['model_name']:
         model.tie_weights()
-
+      
       print(f"Model loaded on {device}")
 
       print('Loading tokenizer')
       tokenizer = transformers.AutoTokenizer.from_pretrained(self._configs['tokenizer_name'])
       print('in transformers pipeline')
-      generate_text = transformers.pipeline(
-          model=model, tokenizer=tokenizer,
-          device=device,
-          pad_token_id=tokenizer.eos_token_id,
-          **self._pipelineconfigs
-      )
+      if 'load_in_4bit' not in listmc and 'load_in_8bit' not in listmc:
+        generate_text = transformers.pipeline(
+            model=model, tokenizer=tokenizer,
+            device=device,
+            pad_token_id=tokenizer.eos_token_id,
+            #stopping_criteria=stopping_criteria,
+            **pipelineconfigs
+        )
+      else:
+        generate_text = transformers.pipeline(
+            model=model, tokenizer=tokenizer,
+            pad_token_id=tokenizer.eos_token_id,
+            #stopping_criteria=stopping_criteria,
+            **pipelineconfigs
+        )       
 
       print('Creating HF Pipeline')
       llm = HuggingFacePipeline(pipeline=generate_text)
