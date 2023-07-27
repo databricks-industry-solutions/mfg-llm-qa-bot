@@ -1,4 +1,21 @@
 # Databricks notebook source
+# MAGIC %md ##Introduction
+# MAGIC
+# MAGIC So that our qabot application can respond to user questions with relevant answers, we will provide our model with content from documents relevant to the question being asked.  The idea is that the bot will leverage the information in these documents as it formulates a response.
+# MAGIC
+# MAGIC For our application, we've extracted a series of documents from [New Jersey Chemical Data Fact Sheets](https://web.doh.state.nj.us/rtkhsfs/factsheets.aspx). Using this documentation, we have created a vector database that contains an embedded version of the knowledge stored in these sheets.
+# MAGIC
+# MAGIC </p>
+# MAGIC
+# MAGIC <img src='https://brysmiwasb.blob.core.windows.net/demos/images/bot_data_processing4.png' width=700>
+# MAGIC
+# MAGIC </p>
+# MAGIC
+# MAGIC In this notebook, we will load these PDF documents, chunk the entire document into pieces and then create embeddings from this.  We will retrieve those documents along with metadata about them and feed that to a vector store which will create on index enabling fast document search and retrieval.
+
+# COMMAND ----------
+
+# DBTITLE 1,Install required libraries
 # MAGIC %pip install -U PyPDF==3.9.1 pycryptodome==3.18.0 langchain==0.0.207 transformers==4.30.1 accelerate==0.20.3  einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 PyCryptodome==3.18.0 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
 # MAGIC
 
