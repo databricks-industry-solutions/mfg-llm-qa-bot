@@ -5,7 +5,7 @@
 # MAGIC
 # MAGIC
 # MAGIC <p>
-# MAGIC     <img src="../images/MLflow-RAG.png" width="700" />
+# MAGIC     <img src="https://github.com/databricks-industry-solutions/mfg-llm-qa-bot/raw/main/images/MLflow-RAG.png" width="700" />
 # MAGIC </p>
 # MAGIC
 

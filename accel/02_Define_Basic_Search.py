@@ -4,10 +4,8 @@
 # MAGIC In this notebook, we will test out loading the vector database for similarity search. Additionally, we create a simple example of combining the open sourced LLM (defined in the /utils/configs) and the similarity search as a retriever.
 # MAGIC
 # MAGIC
-# MAGIC NEED TO UPDATE THE IMAGE - think we can use the entire process since it's an example.
-# MAGIC
 # MAGIC <p>
-# MAGIC     <img src="../images/Basic-similarity-search.png" width="700" />
+# MAGIC     <img src="https://github.com/databricks-industry-solutions/mfg-llm-qa-bot/raw/main/images/Basic-similarity-search.png" width="700" />
 # MAGIC </p>
 # MAGIC
 # MAGIC
