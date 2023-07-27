@@ -16,8 +16,6 @@ ___
 ___
 
 
-IMAGE TO REFERENCE ARCHITECTURE
-
 ![image](/images/Entire-process.png)
 
 ___

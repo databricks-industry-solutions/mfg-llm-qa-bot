@@ -6,7 +6,7 @@
 # MAGIC For our application, we've extracted a series of documents from [New Jersey Chemical Data Fact Sheets](https://web.doh.state.nj.us/rtkhsfs/factsheets.aspx). Using this documentation, we have created a vector database that contains an embedded version of the knowledge stored in these sheets.
 # MAGIC
 # MAGIC <p>
-# MAGIC     <img src="../blob/master/images/Generate-Embeddings.png?raw=true" width="700" />
+# MAGIC     <img src="../images/Generate-Embeddings.png" width="700" />
 # MAGIC </p>
 # MAGIC
 # MAGIC

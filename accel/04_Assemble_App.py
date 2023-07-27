@@ -5,9 +5,11 @@
 # MAGIC
 # MAGIC
 # MAGIC NEED TO UPDATE THE IMAGE - WE WILL LIKELY NEED TO DRAW THE MLFLOW ASPECT IN THIS
+# MAGIC
 # MAGIC <p>
-# MAGIC     <img src="../blob/master/images/Entire-process.png?raw=true" width="700" />
+# MAGIC     <img src="../images/Generate-Embeddings.png" width="700" />
 # MAGIC </p>
+# MAGIC
 # MAGIC
 
 # COMMAND ----------
