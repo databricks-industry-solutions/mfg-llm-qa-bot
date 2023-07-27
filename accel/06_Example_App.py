@@ -3,10 +3,9 @@
 # MAGIC
 # MAGIC This is an example application that you can leverage to make an api call to the model that's now hosted in Databricks model serving. This application can be hosted locally, on Huggingface Spaces, on a Databricks VM or any other VM that can run Python.
 # MAGIC
-# MAGIC NEED TO UPDATE THE IMAGE
 # MAGIC
 # MAGIC <p>
-# MAGIC     <img src="../images/Generate-Embeddings.png" width="700" />
+# MAGIC     <img src="https://github.com/databricks-industry-solutions/mfg-llm-qa-bot/raw/main/images/Example-App.png" width="700" />
 # MAGIC </p>
 # MAGIC
 
