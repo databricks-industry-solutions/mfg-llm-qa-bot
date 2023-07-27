@@ -18,7 +18,7 @@ ___
 
 IMAGE TO REFERENCE ARCHITECTURE
 
-![](https://raw.githubusercontent.com/databricks-industry-solutions/mfg-llm-qa-bot/images/Overall-diagram.png)
+![image](/images/Entire-process.png)
 
 ___
 

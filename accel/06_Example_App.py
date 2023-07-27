@@ -1,5 +1,13 @@
 # Databricks notebook source
-
+# MAGIC %md ##Example Application
+# MAGIC
+# MAGIC This is an example application that you can leverage to make an api call to the model that's now hosted in Databricks model serving. This application can be hosted locally, on Huggingface Spaces, on a Databricks VM or any other VM that can run Python.
+# MAGIC
+# MAGIC NEED TO UPDATE THE IMAGE
+# MAGIC <p>
+# MAGIC     <img src="../blob/master/images/Entire-process.png?raw=true" width="700" />
+# MAGIC </p>
+# MAGIC
 
 # COMMAND ----------
 

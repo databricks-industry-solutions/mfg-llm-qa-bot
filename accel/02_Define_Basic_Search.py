@@ -1,6 +1,14 @@
 # Databricks notebook source
-# MAGIC %md
-# MAGIC #### Open source tiiuae/falcon-7b model in both Hugging Face transformers and LangChain.
+# MAGIC %md ##Define Basic Search
+# MAGIC
+# MAGIC In this notebook, we will test out loading the vector database for similarity search. Additionally, we create a simple example of combining the open sourced LLM (defined in the /utils/configs) and the similarity search as a retriever.
+# MAGIC
+# MAGIC
+# MAGIC NEED TO UPDATE THE IMAGE - think we can use the entire process since it's an example.
+# MAGIC <p>
+# MAGIC     <img src="../blob/master/images/Entire-process.png?raw=true" width="700" />
+# MAGIC </p>
+# MAGIC
 
 # COMMAND ----------
 
@@ -241,7 +249,3 @@ res
 # COMMAND ----------
 
 # MAGIC %fs ls /Users/ramdas.murali@databricks.com/
-
-# COMMAND ----------
-
-

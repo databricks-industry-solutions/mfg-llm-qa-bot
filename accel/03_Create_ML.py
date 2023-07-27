@@ -1,4 +1,17 @@
 # Databricks notebook source
+# MAGIC %md ##Create ML
+# MAGIC
+# MAGIC In this notebook, we create a custom MLflow pyfunc wrapper to store our langchain model in MLflow. We do this to follow MLOps best practices and simplify the deployment of our application
+# MAGIC
+# MAGIC
+# MAGIC NEED TO UPDATE THE IMAGE - WE WILL LIKELY NEED TO DRAW THE MLFLOW ASPECT IN THIS
+# MAGIC <p>
+# MAGIC     <img src="../blob/master/images/Entire-process.png?raw=true" width="700" />
+# MAGIC </p>
+# MAGIC
+
+# COMMAND ----------
+
 # MAGIC %pip install -U langchain==0.0.203 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0 sentence-transformers==2.2.2
 
 # COMMAND ----------
@@ -28,7 +41,6 @@ from transformers import StoppingCriteria, StoppingCriteriaList
 import gc
 
 # COMMAND ----------
-
 
 from utils.stoptoken import StopOnTokens
 import json
@@ -169,9 +181,5 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
     result['source'] = ','.join([ src.metadata['source'] for src in doc['source_documents']])   
 
     return result
-
-
-
-# COMMAND ----------
 
 

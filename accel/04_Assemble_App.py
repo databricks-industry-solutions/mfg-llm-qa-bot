@@ -1,8 +1,20 @@
 # Databricks notebook source
-# MAGIC %run ./03_Create_ML
+# MAGIC %md ##Assemble App
+# MAGIC
+# MAGIC In this notebook, we call the custom MLflow pyfunc wrapper that we created in the previous notebook. We then load in the vectorstore as a retriever and pass the required environment configuration. We then persist the model to MLflow and make the required MLflow API call to register this model in the model registry.
+# MAGIC
+# MAGIC
+# MAGIC NEED TO UPDATE THE IMAGE - WE WILL LIKELY NEED TO DRAW THE MLFLOW ASPECT IN THIS
+# MAGIC <p>
+# MAGIC     <img src="../blob/master/images/Entire-process.png?raw=true" width="700" />
+# MAGIC </p>
+# MAGIC
 
 # COMMAND ----------
 
+# MAGIC %run ./03_Create_ML
+
+# COMMAND ----------
 
 # Chroma
 # vectorstore = Chroma(
@@ -158,7 +170,3 @@ filterdict={'Name':'ACETALDEHYDE'}
 search = {'question':['what are some properties of Acetaldehyde?'],'filter':[filterdict]}
 json = pd.DataFrame.from_dict(search).to_json(orient='split')
 print(json)
-
-# COMMAND ----------
-
-

@@ -1,15 +1,14 @@
 # Databricks notebook source
-# MAGIC %md ##Introduction
+# MAGIC %md ##Create Embeddings
 # MAGIC
 # MAGIC So that our qabot application can respond to user questions with relevant answers, we will provide our model with content from documents relevant to the question being asked.  The idea is that the bot will leverage the information in these documents as it formulates a response.
 # MAGIC
 # MAGIC For our application, we've extracted a series of documents from [New Jersey Chemical Data Fact Sheets](https://web.doh.state.nj.us/rtkhsfs/factsheets.aspx). Using this documentation, we have created a vector database that contains an embedded version of the knowledge stored in these sheets.
 # MAGIC
+# MAGIC <p>
+# MAGIC     <img src="../blob/master/images/Generate-Embeddings.png?raw=true" width="700" />
 # MAGIC </p>
 # MAGIC
-# MAGIC <img src='https://brysmiwasb.blob.core.windows.net/demos/images/bot_data_processing4.png' width=700>
-# MAGIC
-# MAGIC </p>
 # MAGIC
 # MAGIC In this notebook, we will load these PDF documents, chunk the entire document into pieces and then create embeddings from this.  We will retrieve those documents along with metadata about them and feed that to a vector store which will create on index enabling fast document search and retrieval.
 
