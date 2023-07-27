@@ -3,13 +3,9 @@
 # MAGIC
 # MAGIC In this notebook, we call the custom MLflow pyfunc wrapper that we created in the previous notebook. We then load in the vectorstore as a retriever and pass the required environment configuration. We then persist the model to MLflow and make the required MLflow API call to register this model in the model registry.
 # MAGIC
-# MAGIC
-# MAGIC NEED TO UPDATE THE IMAGE - WE WILL LIKELY NEED TO DRAW THE MLFLOW ASPECT IN THIS
-# MAGIC
 # MAGIC <p>
-# MAGIC     <img src="../images/Generate-Embeddings.png" width="700" />
+# MAGIC     <img src="../images/MLflow-RAG.png" width="700" />
 # MAGIC </p>
-# MAGIC
 # MAGIC
 
 # COMMAND ----------

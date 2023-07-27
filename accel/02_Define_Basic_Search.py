@@ -7,7 +7,7 @@
 # MAGIC NEED TO UPDATE THE IMAGE - think we can use the entire process since it's an example.
 # MAGIC
 # MAGIC <p>
-# MAGIC     <img src="../images/Generate-Embeddings.png" width="700" />
+# MAGIC     <img src="../images/Basic-similarity-search.png" width="700" />
 # MAGIC </p>
 # MAGIC
 # MAGIC
