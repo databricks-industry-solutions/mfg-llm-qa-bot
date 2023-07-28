@@ -4,10 +4,10 @@
 [![POC](https://img.shields.io/badge/POC-10_days-green?style=for-the-badge)](https://databricks.com/try-databricks)
 
 ## Business Problem
-<List of the business use case the solution accelerator address>
+The goal of this solution accelerator is to demonstrate how you can create a QA bot using open sourced models. Due to privacy requirements, many customers can't use propreitary models. This has been designed so that you can easily switch between the newest and best LLMs from Huggingface. 
 
 ## Scope
-<How we expect the user to use this content>
+A customer can easily take this solution accelerator and replace it with a knowledge base of articles (i.e. in PDF format) to replicate the application that's been built. 
 
 ___
 <william.block@databricks.com>,
@@ -24,7 +24,8 @@ ___
 
 | library                                | description             | license    | source                                              |
 |----------------------------------------|-------------------------|------------|-----------------------------------------------------|
-| PyYAML                                 | Reading Yaml files      | MIT        | https://github.com/yaml/pyyaml                      |
+| Langchain                              | Develop LLM applications  | MIT        | https://pypi.org/project/langchain              |
+| Huggingface                                 | Huggingface is a hub LLM apps      | Apache Software License (Apache 2.0)        | https://pypi.org/project/huggingface/            |
 
 ## Getting started
 
@@ -35,9 +36,8 @@ Although specific solutions can be downloaded as .dbc archives from our websites
 To start using a solution accelerator in Databricks simply follow these steps: 
 
 1. Clone solution accelerator repository in Databricks using [Databricks Repos](https://www.databricks.com/product/repos)
-2. Attach the `RUNME` notebook to any cluster and execute the notebook via Run-All. A multi-step-job describing the accelerator pipeline will be created, and the link will be provided. The job configuration is written in the RUNME notebook in json format. 
-3. Execute the multi-step-job to see how the pipeline runs. 
-4. You might want to modify the samples in the solution accelerator to your need, collaborate with other users and run the code samples against your own data. To do so start by changing the Git remote of your repository  to your organization’s repository vs using our samples repository (learn more). You can now commit and push code, collaborate with other user’s via Git and follow your organization’s processes for code development.
+2. Navigate to the /accel folder. The notebooks are organized in this folder for your convenience.
+3. Within /accel/utils, you can edit the types of models you would like to test out from Huggingface. Additionally, you can change the configs here to point to your knowledge base to create your own vector database.
 
 The cost associated with running the accelerator is the user's responsibility.
 
