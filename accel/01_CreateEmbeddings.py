@@ -6,11 +6,15 @@
 # MAGIC For our application, we've extracted a series of documents from [New Jersey Chemical Data Fact Sheets](https://web.doh.state.nj.us/rtkhsfs/factsheets.aspx). Using this documentation, we have created a vector database that contains an embedded version of the knowledge stored in these sheets.
 # MAGIC
 # MAGIC <p>
-# MAGIC     <img src="https://github.com/databricks-industry-solutions/mfg-llm-qa-bot/raw/main/images/Entire-process.png" width="700" />
+# MAGIC     <img src="https://github.com/databricks-industry-solutions/mfg-llm-qa-bot/raw/main/images/EntireProcess.png" width="700" />
 # MAGIC </p>
 # MAGIC
 # MAGIC
 # MAGIC In this notebook, we will load these PDF documents, chunk the entire document into pieces and then create embeddings from this.  We will retrieve those documents along with metadata about them and feed that to a vector store which will create on index enabling fast document search and retrieval.
+# MAGIC
+# MAGIC This notebook was tested on the following infrastructure:
+# MAGIC * DBR 13.2ML (GPU)
+# MAGIC * g5.4xlarge (AWS) - however comparable infra on Azure should work (A10s)
 
 # COMMAND ----------
 

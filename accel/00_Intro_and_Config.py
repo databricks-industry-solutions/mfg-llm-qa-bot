@@ -27,13 +27,9 @@
 
 # MAGIC %md ##Configuration
 # MAGIC
-# MAGIC The following parameters are used throughout the notebooks to control the resources being used.  If you modify these variables, please note that markdown in the notebooks may refer to the original values associated with these:
-
-# COMMAND ----------
-
-#Set these in the cluster env
-# TRANSFORMERS_CACHE="/dbfs/Users/ramdas.murali@databricks.com/data/gptmodel"
-# HUGGINGFACEHUB_API_TOKEN={{secrets/rkm-scope/huggingface}}
+# MAGIC The configuration below govern what's being loaded throughout the series of notebooks. If you wish to change the open sourced model type or tokenizer or something else, please change the configs file in /utils to do so. This notebook was tested on the following infrastructure:
+# MAGIC * DBR 13.2ML (GPU)
+# MAGIC * g5.4xlarge (AWS) - however comparable infra on Azure should work (A10s)
 
 # COMMAND ----------
 

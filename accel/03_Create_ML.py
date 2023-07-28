@@ -8,6 +8,9 @@
 # MAGIC     <img src="https://github.com/databricks-industry-solutions/mfg-llm-qa-bot/raw/main/images/MLflow-RAG.png" width="700" />
 # MAGIC </p>
 # MAGIC
+# MAGIC This notebook was tested on the following infrastructure:
+# MAGIC * DBR 13.2ML (GPU)
+# MAGIC * g5.4xlarge (AWS) - however comparable infra on Azure should work (A10s)
 
 # COMMAND ----------
 
