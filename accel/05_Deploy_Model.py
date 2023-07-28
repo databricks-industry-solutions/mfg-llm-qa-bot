@@ -53,7 +53,7 @@ served_models = [
       "model_name": configs['registered_model_name'],
       "model_version": latest_version,
       "workload_type": "GPU_MEDIUM",
-      "workload_size": "Medium",
+      "workload_size": "Small",
       "scale_to_zero_enabled": 'false'}]   
   }  
 ]
@@ -126,6 +126,7 @@ def list_endpoints():
 # COMMAND ----------
 
 # list_endpoints()
+
 #kick off endpoint creation/update
 if not endpoint_exists():
   create_endpoint()
@@ -133,3 +134,7 @@ if not endpoint_exists():
 else:
   update_endpoint()
   wait_for_endpoint()
+
+# COMMAND ----------
+
+
