@@ -16,7 +16,7 @@ ___
 ___
 
 
-![image](/images/Entire-process.png)
+![image](https://github.com/databricks-industry-solutions/mfg-llm-qa-bot/raw/main/images/EntireProcess.png)
 
 ___
 
@@ -32,6 +32,12 @@ ___
 Although specific solutions can be downloaded as .dbc archives from our websites, we recommend cloning these repositories onto your databricks environment. Not only will you get access to latest code, but you will be part of a community of experts driving industry best practices and re-usable solutions, influencing our respective industries. 
 
 <img width="500" alt="add_repo" src="https://user-images.githubusercontent.com/4445837/177207338-65135b10-8ccc-4d17-be21-09416c861a76.png">
+
+
+The series of notebooks in this accelerator were tested on the following infrastructure:
+* DBR 13.2ML (GPU)
+* g5.4xlarge (AWS) - however comparable infra on Azure should work (A10s)
+
 
 To start using a solution accelerator in Databricks simply follow these steps: 
 
