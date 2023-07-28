@@ -44,7 +44,7 @@ configs.update({'num_similar_docs':10})
 configs.update({'registered_model_name':'mfg-llm-qabot'})
 configs.update({'HF_key_secret_scope':'mfg-llm-solution-accel'})
 configs.update({'HF_key_secret_key':'huggingface'})
-configs.update({'serving_endpoint_name':'mfg-llm-qabot-endpoint'})
+configs.update({'serving_endpoint_name':'mfg-llm-qabot-endpoint2'})
 
 
 #configs.update({'model_name' : 'togethercomputer/RedPajama-INCITE-Instruct-3B-v1'})
@@ -80,7 +80,7 @@ elif 'lama-2-' in configs['model_name']:
   automodelconfigs = {
     'trust_remote_code':True,
     'device_map':'auto', 
-    'low_cpu_mem_usage':True,
+    #'low_cpu_mem_usage':True,
     'torch_dtype':torch.float16 #
     } 
 else:
@@ -107,7 +107,7 @@ elif 'lama-2-' in configs['model_name']:
       'temperature':0.8,  # 'randomness' of outputs, 0.0 is the min and 1.0 the max
       'top_p':0.80,  # select from top tokens whose probability add up to 80%
       'top_k':0,  # select from top 0 tokens (because zero, relies on top_p)
-      'max_new_tokens':200,  # mex number of tokens to generate in the output
+      'max_new_tokens':400,  # mex number of tokens to generate in the output
       'repetition_penalty':1.1, # without this output begins repeating
       #'max_length':128,
       'return_full_text':True  # langchain expects the full text

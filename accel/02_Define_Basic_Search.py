@@ -241,7 +241,3 @@ res
 # COMMAND ----------
 
 # MAGIC %fs ls /Users/ramdas.murali@databricks.com/
-
-# COMMAND ----------
-
-

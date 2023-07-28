@@ -29,7 +29,6 @@ import gc
 
 # COMMAND ----------
 
-
 from utils.stoptoken import StopOnTokens
 import json
 
@@ -59,33 +58,33 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
       device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
 
       print('Loading Model')
-      if 'flan' not in configs['model_name']:
+      if 'flan' not in self._configs['model_name']:
         model = transformers.AutoModelForCausalLM.from_pretrained(
-            configs['model_name'],
-            **automodelconfigs
+            self._configs['model_name'],
+            **self._automodelconfigs
         )
-      elif 'mpt' in configs['model_name']:
-        modconfig = transformers.AutoConfig.from_pretrained(configs['model_name'] ,
+      elif 'mpt' in self._configs['model_name']:
+        modconfig = transformers.AutoConfig.from_pretrained(self._configs['model_name'] ,
         trust_remote_code=True
         )
         #modconfig.attn_config['attn_impl'] = 'triton'
         model = transformers.AutoModelForCausalLM.from_pretrained(
-        configs['model_name'],
+        self._configs['model_name'],
         config=modconfig,
-        **automodelconfigs
+        **self._automodelconfigs
         )     
       else:
         model = transformers.AutoModelForSeq2SeqLM.from_pretrained(
-            configs['model_name'],
-            **automodelconfigs
+            self._configs['model_name'],
+            **self._automodelconfigs
         )      
 
       #model.to(device) not valid for 4 bit and 8 bit devices
-      listmc = automodelconfigs.keys()
+      listmc = self._automodelconfigs.keys()
       if 'load_in_4bit' not in listmc and 'load_in_8bit' not in listmc:
         model.eval()
         model.to(device)
-      if 'RedPajama' in configs['model_name']:
+      if 'RedPajama' in self._configs['model_name']:
         model.tie_weights()
       
       print(f"Model loaded on {device}")
@@ -99,14 +98,14 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
             device=device,
             pad_token_id=tokenizer.eos_token_id,
             #stopping_criteria=stopping_criteria,
-            **pipelineconfigs
+            **self._pipelineconfigs
         )
       else:
         generate_text = transformers.pipeline(
             model=model, tokenizer=tokenizer,
             pad_token_id=tokenizer.eos_token_id,
             #stopping_criteria=stopping_criteria,
-            **pipelineconfigs
+            **self._pipelineconfigs
         )       
 
       print('Creating HF Pipeline')
@@ -127,6 +126,12 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
         context: MLflow context where the model artifact is stored.
     """
     os.environ['HUGGINGFACEHUB_API_TOKEN'] = self._huggingface_token
+      
+    if 'lama-2-' in self._configs['model_name']:
+      import subprocess
+      retval = subprocess.call(f'huggingface-cli login --token {self._huggingface_token}', shell=True)
+      print(f"{self._configs['model_name']} limited auth is complete-{retval}")    
+
     llm = self.loadModel()
     if llm is None:
       print('cannot load context because model was not loaded')
@@ -169,9 +174,5 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
     result['source'] = ','.join([ src.metadata['source'] for src in doc['source_documents']])   
 
     return result
-
-
-
-# COMMAND ----------
 
 
