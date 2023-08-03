@@ -40,6 +40,7 @@ dbutils.fs.rm(dbfsnormalize(configs['vector_persist_dir']), True)
 
 # COMMAND ----------
 
+# DBTITLE 1,Define helper functions to extract metadata
 def extractMetadata(docstr):
   '''extracts the common name from the document'''
   dict = {}
@@ -61,6 +62,7 @@ def addMetadataElems(metadict, metadata_i):
 
 # COMMAND ----------
 
+# DBTITLE 1,Create embeddings and store into a vector store (Faiss or ChromaDB)
 from langchain.document_loaders import PyPDFLoader
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain import HuggingFaceHub
@@ -139,8 +141,7 @@ vectordb.save_local(vectordb_path)
 
 # COMMAND ----------
 
-#Test the vectorstore and print all ids stored in db
-
+# DBTITLE 1,Test the vector store and print all ids stored in db
 # Load from Chroma
 # vectorstore = Chroma(collection_name='mfg_collection', 
 #        persist_directory=vectordb_path,
@@ -155,6 +156,7 @@ for key,value in vectorstore.index_to_docstore_id.items():
 
 # COMMAND ----------
 
+# DBTITLE 1,Demonstrate similarity search and show sources
 def similarity_search(question, filterdict, k=100):
   #fetch_K - Number of Documents to fetch before filtering.
   matched_docs = vectorstore.similarity_search(question, k=k, filter=filterdict, fetch_k=100)
