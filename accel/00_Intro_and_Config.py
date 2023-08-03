@@ -3,9 +3,13 @@
 
 # COMMAND ----------
 
-# MAGIC %md ##Introduction
+# MAGIC %md ##Large Language Models for Manufacturers
 # MAGIC
-# MAGIC The goal of this solution accelerator is to show how we can leverage a large language model in combination with our own data to create an interactive application capable of answering questions specific to a particular domain or subject area.  The core pattern behind this is the delivery of a question along with a document or document fragment that provides relevant context for answering that question to the model.  The model will then respond with an answer that takes into consideration both the question and the context. This notebook builds upon the QA bot accelerator that we previously released and demonstrates how you can easily swap open sourced models from Huggingface and test out their performance.
+# MAGIC The goal of this solution accelerator is to show how we can leverage a large language model in combination with our own data to create an interactive application capable of answering questions specific to manufacturing.  
+# MAGIC
+# MAGIC In essence the use case is around augmenting the diagnostics capability of field service engineers. Field service engineers are often challenged with accessing tons of documents that are intertwined. Having an LLM to reduce the time taken to diagnose the problem will inadvertently increase efficiencies.
+# MAGIC
+# MAGIC The core pattern behind this is the delivery of a question along with a document or document fragment that provides relevant context for answering that question to the model.  The model will then respond with an answer that takes into consideration both the question and the context. This notebook builds upon the QA bot accelerator that we previously released and demonstrates how you can easily swap open sourced models from Huggingface and test out their performance.
 # MAGIC </p>
 # MAGIC
 # MAGIC <img src='https://brysmiwasb.blob.core.windows.net/demos/images/bot_flow.png' width=500>
@@ -65,5 +69,10 @@ mlflow.set_experiment('/Users/{}/mfg_llm_sds_search'.format(username))
 # MAGIC |----------------------------------------|-------------------------|------------|-----------------------------------------------------|
 # MAGIC |  NJ SDS | Right to Know Hazardous Substance Fact Sheets | None  |   https://web.doh.state.nj.us/rtkhsfs/indexfs.aspx |
 # MAGIC | langchain | Building applications with LLMs through composability | MIT  |   https://pypi.org/project/langchain/ |
+# MAGIC | faiss | An open source library for efficient similarity seach and clustering of dense vectors | MIT | https://faiss.ai/ |
 # MAGIC | chromadb | An open source embedding database |  Apache |  https://pypi.org/project/chromadb/  |
 # MAGIC | sentence-transformers | Compute dense vector representations for sentences, paragraphs, and images | Apache 2.0 |https://pypi.org/project/sentence-transformers/ |
+
+# COMMAND ----------
+
+
