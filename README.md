@@ -4,7 +4,7 @@
 [![POC](https://img.shields.io/badge/POC-10_days-green?style=for-the-badge)](https://databricks.com/try-databricks)
 
 ## Business Problem
-The goal of this solution accelerator is to demonstrate how you can create a QA bot using open sourced models. Due to privacy requirements, many customers can't use propreitary models. This has been designed so that you can easily switch between the newest and best LLMs from Huggingface. 
+The goal of this solution accelerator is to demonstrate how you can create a QA bot using open sourced models. Due to privacy requirements, many customers can't use proprietary models. This has been designed so that you can easily switch between the newest and best LLMs from Huggingface. 
 
 ## Scope
 A customer can easily take this solution accelerator and replace it with a knowledge base of articles (i.e. in PDF format) to replicate the application that's been built. 
@@ -25,24 +25,19 @@ ___
 | library                                | description             | license    | source                                              |
 |----------------------------------------|-------------------------|------------|-----------------------------------------------------|
 | Langchain                              | Develop LLM applications  | MIT        | https://pypi.org/project/langchain              |
-| Huggingface                                 | Huggingface is a hub LLM apps      | Apache Software License (Apache 2.0)        | https://pypi.org/project/huggingface/            |
+| Huggingface                                 | Huggingface is a hub LLM apps      | Apache 2.0        | https://pypi.org/project/huggingface/            |
+|  Gradio | Build Machine Learning Web Apps in Python |  Apache 2.0  |   https://pypi.org/project/gradio/ |
 
 ## Getting started
 
-Although specific solutions can be downloaded as .dbc archives from our websites, we recommend cloning these repositories onto your databricks environment. Not only will you get access to latest code, but you will be part of a community of experts driving industry best practices and re-usable solutions, influencing our respective industries. 
+Although specific solutions can be downloaded from our websites, we recommend cloning these repositories onto your databricks environment. Not only will you get access to latest code, but you will be part of a community of experts driving industry best practices and re-usable solutions, influencing our respective industries. 
 
 <img width="500" alt="add_repo" src="https://user-images.githubusercontent.com/4445837/177207338-65135b10-8ccc-4d17-be21-09416c861a76.png">
-
-
-The series of notebooks in this accelerator were tested on the following infrastructure:
-* DBR 13.2ML (GPU)
-* g5.4xlarge (AWS) - however comparable infra on Azure should work (A10s)
-
 
 To start using a solution accelerator in Databricks simply follow these steps: 
 
 1. Clone solution accelerator repository in Databricks using [Databricks Repos](https://www.databricks.com/product/repos)
-2. Navigate to the /accel folder. The notebooks are organized in this folder for your convenience.
+2. Attach the RUNME notebook to any cluster running a DBR 11.0 or later runtime, and execute the notebook via Run-All. A multi-step-job describing the accelerator pipeline will be created, and the link will be provided. Execute the multi-step-job to see how the pipeline runs.
 3. Within /accel/utils, you can edit the types of models you would like to test out from Huggingface. Additionally, you can change the configs here to point to your knowledge base to create your own vector database.
 
 The cost associated with running the accelerator is the user's responsibility.

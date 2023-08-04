@@ -1,4 +1,8 @@
 # Databricks notebook source
+# MAGIC %md You may find this notebook on https://github.com/databricks-industry-solutions/mfg-llm-qa-bot.
+
+# COMMAND ----------
+
 # MAGIC %md ##Define Basic Search
 # MAGIC
 # MAGIC In this notebook, we will test out loading the vector database for similarity search. Additionally, we create a simple example of combining the open sourced LLM (defined in the /utils/configs) and the similarity search as a retriever.

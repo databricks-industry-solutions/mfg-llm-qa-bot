@@ -1,6 +1,6 @@
 # Databricks notebook source
 import os
-os.environ['HUGGINGFACEHUB_API_TOKEN'] = dbutils.secrets.get('mfg-llm-solution-accel2', 'huggingface')    #mfg-llm-solution-accel2 #rkm-scope
+os.environ['HUGGINGFACEHUB_API_TOKEN'] = dbutils.secrets.get('solution-accelerator-cicd', 'huggingface')    #mfg-llm-solution-accel2 #rkm-scope
 os.environ['HF_HOME'] = '/dbfs/temp/hfmfgcache'
 
 # COMMAND ----------
@@ -16,9 +16,13 @@ def dbfsnormalize(path):
 
 # COMMAND ----------
 
+username = dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()
+
+# COMMAND ----------
+
 configs = {}
 configs.update({'vector_persist_dir' : '/dbfs/temp/faissv1'}) #/dbfs/temp/faissv1
-configs.update({'data_dir':'/dbfs/Users/ramdas.murali@databricks.com/data/sds_pdf'})
+configs.update({'data_dir':f'/dbfs/Users/{username}/data/sds_pdf'})
 configs.update({'chunk_size':600})
 configs.update({'chunk_overlap':20})
 
@@ -42,9 +46,9 @@ Helpful answer:
 
 configs.update({'num_similar_docs':10})
 configs.update({'registered_model_name':'mfg-llm-qabot'})
-configs.update({'HF_key_secret_scope':'mfg-llm-solution-accel'})
+configs.update({'HF_key_secret_scope':'solution-accelerator-cicd'})
 configs.update({'HF_key_secret_key':'huggingface'})
-configs.update({'serving_endpoint_name':'mfg-llm-qabot-endpoint2'})
+configs.update({'serving_endpoint_name':'mfg-llm-qabot-serving-endpoint'})
 
 
 #configs.update({'model_name' : 'togethercomputer/RedPajama-INCITE-Instruct-3B-v1'})
@@ -124,3 +128,19 @@ else:
       'return_full_text':True  # langchain expects the full text
   }  
 
+
+# COMMAND ----------
+
+# DBTITLE 1,Databricks url and token
+import os
+ctx = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
+configs['databricks token'] = ctx.apiToken().getOrElse(None)
+configs['databricks url'] = ctx.apiUrl().getOrElse(None)
+os.environ['DATABRICKS_TOKEN'] = configs["databricks token"]
+os.environ['DATABRICKS_URL'] = configs["databricks url"]
+
+# COMMAND ----------
+
+# DBTITLE 1,MLflow experiment
+import mlflow
+mlflow.set_experiment('/Users/{}/mfg_llm_sds_search'.format(username))

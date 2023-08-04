@@ -1,4 +1,8 @@
 # Databricks notebook source
+# MAGIC %md You may find this notebook on https://github.com/databricks-industry-solutions/mfg-llm-qa-bot.
+
+# COMMAND ----------
+
 # MAGIC %md ##Create Embeddings
 # MAGIC
 # MAGIC So that our qabot application can respond to user questions with relevant answers, we will provide our model with content from documents relevant to the question being asked.  The idea is that the bot will leverage the information in these documents as it formulates a response.
@@ -11,20 +15,16 @@
 # MAGIC
 # MAGIC
 # MAGIC In this notebook, we will load these PDF documents, chunk the entire document into pieces and then create embeddings from this.  We will retrieve those documents along with metadata about them and feed that to a vector store which will create on index enabling fast document search and retrieval.
-# MAGIC
-# MAGIC This notebook was tested on the following infrastructure:
-# MAGIC * DBR 13.2ML (GPU)
-# MAGIC * g5.4xlarge (AWS) - however comparable infra on Azure should work (A10s)
 
 # COMMAND ----------
 
 # DBTITLE 1,Install required libraries
 # MAGIC %pip install -U PyPDF==3.9.1 pycryptodome==3.18.0 langchain==0.0.207 transformers==4.30.1 accelerate==0.20.3  einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 PyCryptodome==3.18.0 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
-# MAGIC
+# MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
 
-dbutils.library.restartPython()
+
 
 # COMMAND ----------
 

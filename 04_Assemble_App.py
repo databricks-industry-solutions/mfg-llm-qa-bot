@@ -1,4 +1,8 @@
 # Databricks notebook source
+# MAGIC %md You may find this notebook on https://github.com/databricks-industry-solutions/mfg-llm-qa-bot.
+
+# COMMAND ----------
+
 # MAGIC %md ##Assemble App
 # MAGIC
 # MAGIC In this notebook, we call the custom MLflow pyfunc wrapper that we created in the previous notebook. We then load in the vectorstore as a retriever and pass the required environment configuration. We then persist the model to MLflow and make the required MLflow API call to register this model in the model registry.

@@ -1,5 +1,5 @@
 # Databricks notebook source
-# MAGIC %md The purpose of this notebook is to provide access to safety data used by the Product Search solution accelerator.  You may find this notebook on https://github.com/databricks-industry-solutions/product-search.
+# MAGIC %md The purpose of this notebook is to provide access to chemical safety data used by the Manufacturing LLM QA bot solution accelerator.  You may find this notebook on https://github.com/databricks-industry-solutions/mfg-llm-qa-bot.
 
 # COMMAND ----------
 
@@ -31,9 +31,7 @@
 
 # MAGIC %md ##Configuration
 # MAGIC
-# MAGIC The configuration below govern what's being loaded throughout the series of notebooks. If you wish to change the open sourced model type or tokenizer or something else, please change the configs file in /utils to do so. This notebook was tested on the following infrastructure:
-# MAGIC * DBR 13.2ML (GPU)
-# MAGIC * g5.4xlarge (AWS) - however comparable infra on Azure should work (A10s)
+# MAGIC The configuration below govern what's being loaded throughout the series of notebooks. If you wish to change the open sourced model type or tokenizer or something else, please change the configs file in `/utils` to do so. This notebook was tested with the infrastructure specified in the RUNME notebook.
 
 # COMMAND ----------
 
@@ -46,20 +44,8 @@ print(configs)
 
 # COMMAND ----------
 
-# DBTITLE 1,Databricks url and token
-import os
-ctx = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
-config['databricks token'] = ctx.apiToken().getOrElse(None)
-config['databricks url'] = ctx.apiUrl().getOrElse(None)
-os.environ['DATABRICKS_TOKEN'] = config["databricks token"]
-os.environ['DATABRICKS_URL'] = config["databricks url"]
-
-# COMMAND ----------
-
-# DBTITLE 1,MLflow experiment
-import mlflow
-username = dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get()
-mlflow.set_experiment('/Users/{}/mfg_llm_sds_search'.format(username))
+# DBTITLE 1,Set up local copy of source data
+dbutils.fs.cp("s3a://db-gtm-industry-solutions/data/MFG/llm_qa/sds_pdf", dbfsnormalize(configs["data_dir"]), True)
 
 # COMMAND ----------
 
@@ -67,12 +53,8 @@ mlflow.set_experiment('/Users/{}/mfg_llm_sds_search'.format(username))
 # MAGIC
 # MAGIC | library                                | description             | license    | source                                              |
 # MAGIC |----------------------------------------|-------------------------|------------|-----------------------------------------------------|
-# MAGIC |  NJ SDS | Right to Know Hazardous Substance Fact Sheets | None  |   https://web.doh.state.nj.us/rtkhsfs/indexfs.aspx |
+# MAGIC |  NJ SDS | Right to Know Hazardous Substance Fact Sheets | Public Domain  |   https://web.doh.state.nj.us/rtkhsfs/indexfs.aspx |
 # MAGIC | langchain | Building applications with LLMs through composability | MIT  |   https://pypi.org/project/langchain/ |
 # MAGIC | faiss | An open source library for efficient similarity seach and clustering of dense vectors | MIT | https://faiss.ai/ |
-# MAGIC | chromadb | An open source embedding database |  Apache |  https://pypi.org/project/chromadb/  |
+# MAGIC | chromadb | An open source embedding database |  Apache 2.0 |  https://pypi.org/project/chromadb/  |
 # MAGIC | sentence-transformers | Compute dense vector representations for sentences, paragraphs, and images | Apache 2.0 |https://pypi.org/project/sentence-transformers/ |
-
-# COMMAND ----------
-
-

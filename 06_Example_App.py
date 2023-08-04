@@ -1,4 +1,8 @@
 # Databricks notebook source
+# MAGIC %md You may find this notebook on https://github.com/databricks-industry-solutions/mfg-llm-qa-bot.
+
+# COMMAND ----------
+
 # MAGIC %md ##Example Application
 # MAGIC
 # MAGIC This is an example application that you can leverage to make an api call to the model that's now hosted in Databricks model serving. This application can be hosted locally, on Huggingface Spaces, on a Databricks VM or any other VM that can run Python.
@@ -11,6 +15,10 @@
 
 # COMMAND ----------
 
+# MAGIC %run ./utils/config
+
+# COMMAND ----------
+
 import os
 import requests
 import numpy as np
@@ -18,7 +26,7 @@ import pandas as pd
 import json
 import gradio as gr
 
-endpoint="mfg-llm-qabot-endpoint"
+endpoint= config['serving_endpoint_name']
 endpoint_url = f"""{os.environ['DATABRICKS_HOST']}/serving-endpoints/{endpoint}/invocations"""
 
 
