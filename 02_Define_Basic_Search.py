@@ -18,6 +18,7 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Install required libraries
 # MAGIC %pip install -U langchain==0.0.203 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0 
 
 # COMMAND ----------
@@ -26,6 +27,7 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
+# DBTITLE 1,Load in common configs
 # MAGIC %run "./utils/configs"
 
 # COMMAND ----------
@@ -38,6 +40,13 @@ import transformers
 from langchain import HuggingFacePipeline
 from transformers import AutoTokenizer, pipeline
 from langchain.chains import RetrievalQA
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC ##Test Similarity search
+# MAGIC
+# MAGIC In the code below we are loading in the vector store that we defined in the previous notebook with the embedding model that we used to create the vector database. In this case, we are using the [FAISS library from Meta](https://engineering.fb.com/2017/03/29/data-infrastructure/faiss-a-library-for-efficient-similarity-search/) to store our embeddings. 
 
 # COMMAND ----------
 
@@ -78,11 +87,9 @@ print(matched_docs)
 # MAGIC %md
 # MAGIC The first thing we need to do is initialize a `text-generation` pipeline with Hugging Face transformers. The Pipeline requires three things that we must initialize first, those are:
 # MAGIC
-# MAGIC * A LLM, in this case it will be `tiiuae/falcon-7b`.
+# MAGIC * A LLM, in this case it will be defined in the /utils/configs notebook
 # MAGIC
 # MAGIC * The respective tokenizer for the model.
-# MAGIC
-# MAGIC * ~A stopping criteria object.~
 # MAGIC
 # MAGIC We'll explain these as we get to them, let's begin with our model.
 # MAGIC

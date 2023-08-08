@@ -38,7 +38,7 @@ To start using a solution accelerator in Databricks simply follow these steps:
 
 1. Clone solution accelerator repository in Databricks using [Databricks Repos](https://www.databricks.com/product/repos)
 2. Attach the RUNME notebook to any cluster running a DBR 11.0 or later runtime, and execute the notebook via Run-All. A multi-step-job describing the accelerator pipeline will be created, and the link will be provided. Execute the multi-step-job to see how the pipeline runs.
-3. Within /accel/utils, you can edit the types of models you would like to test out from Huggingface. Additionally, you can change the configs here to point to your knowledge base to create your own vector database.
+3. Within /utils, you can edit the types of models you would like to test out from Huggingface. You will want to follow the instructions there to set up your huggingface token. Additionally, you can change the configs here to point to your knowledge base to create your own vector database.
 
 The cost associated with running the accelerator is the user's responsibility.
 

@@ -48,6 +48,13 @@ import gc
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ##Create wrapper for LLM
+# MAGIC
+# MAGIC In the code below, we are using the [mlflow.pyfunc](https://mlflow.org/docs/latest/python_api/mlflow.pyfunc.html#creating-custom-pyfunc-models) to create a custom model type in MLflow. We will call this wrapper in the next notebook to save our model to MLflow.
+
+# COMMAND ----------
+
 from utils.stoptoken import StopOnTokens
 import json
 

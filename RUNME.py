@@ -35,7 +35,7 @@ nsc = NotebookSolutionCompanion()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Before setting up the rest of the accelerator, we need set up a few credentials. Grab a token for your Huggingface account ([documentation](solution-accelerator-cicd)). Here we demonstrate using the [Databricks Secret Scope](https://docs.databricks.com/security/secrets/secret-scopes.html) for credential management. 
+# MAGIC Before setting up the rest of the accelerator, we need set up a few credentials. Grab a token for your Huggingface account ([to access Open sourced models on HuggingFace](https://huggingface.co/docs/hub/security-tokens)). Here we demonstrate using the [Databricks Secret Scope](https://docs.databricks.com/security/secrets/secret-scopes.html) for credential management. 
 # MAGIC
 # MAGIC Copy the block of code below, replace the name the secret scope and fill in the credentials and execute the block. After executing the code, the accelerator notebook will be able to access the credentials it needs.
 # MAGIC
