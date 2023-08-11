@@ -24,10 +24,7 @@
 
 # COMMAND ----------
 
-
-
-# COMMAND ----------
-
+# DBTITLE 1,Load Configs
 # MAGIC %run "./utils/configs"
 
 # COMMAND ----------

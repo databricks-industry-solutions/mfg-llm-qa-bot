@@ -17,10 +17,12 @@
 
 # COMMAND ----------
 
+# DBTITLE 1,Load mlflow pyfunc wrapper 
 # MAGIC %run ./03_Create_ML
 
 # COMMAND ----------
 
+# DBTITLE 1,Verify Retrieval Augmented Generation is working as expected
 # Chroma
 # vectorstore = Chroma(
 #         collection_name="mfg_collection",
@@ -58,6 +60,7 @@ mfgsdsbot = MLflowMfgBot(
 
 # COMMAND ----------
 
+# DBTITLE 1,Ensure dependencies are passed to the environment in Mlflow
 # get base environment configuration
 conda_env = mlflow.pyfunc.get_default_conda_env()
 # define packages required by model
@@ -84,6 +87,7 @@ print(
 
 # COMMAND ----------
 
+# DBTITLE 1,Use the wrapper from 03_Create_ML to log experiment in MLflow
 # persist model to mlflow
 with mlflow.start_run():
   _ = (
@@ -95,6 +99,13 @@ with mlflow.start_run():
       registered_model_name=configs['registered_model_name']
       )
     )
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ##Register model in the [MLflow Model Registry](https://docs.databricks.com/en/mlflow/model-registry.html)
+# MAGIC
+# MAGIC We do this to help enable CI/CD and for ease of deployment in the next notebook.
 
 # COMMAND ----------
 
@@ -111,8 +122,17 @@ client.transition_model_version_stage(
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC ##Load model from Model Registry
+
+# COMMAND ----------
+
 model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}/Production")
 
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ##Verify model from Registry is returning results as expected
 
 # COMMAND ----------
 
