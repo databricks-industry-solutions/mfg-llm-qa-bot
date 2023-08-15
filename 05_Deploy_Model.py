@@ -24,7 +24,7 @@ from mlflow.utils.databricks_utils import get_databricks_host_creds
 # COMMAND ----------
 
 client = mlflow.MlflowClient()
-
+#get the latest version of the registered model in MLFlow
 latest_version = client.get_latest_versions(configs['registered_model_name'], stages=['Production'])[0].version
 print(latest_version)
 # gather other inputs the API needs
@@ -42,6 +42,8 @@ creds = get_databricks_host_creds()
 
 # COMMAND ----------
 
+#[0] is used for creation with name and config.
+#[1] is used for updates.
 served_models = [
   {
     "name": configs['serving_endpoint_name'],
@@ -68,6 +70,8 @@ served_models = [
 
 # COMMAND ----------
 
+#Utility functions for deployment using the serving endpoints REST API endpoint.
+
 def endpoint_exists():
   """Check if an endpoint with the serving_endpoint_name exists"""
   url = f"https://{serving_host}/api/2.0/serving-endpoints/{configs['serving_endpoint_name']}"
@@ -81,6 +85,7 @@ def wait_for_endpoint():
   headers = { 'Authorization': f'Bearer {creds.token}' }
   endpoint_url = f"https://{serving_host}/api/2.0/serving-endpoints/{configs['serving_endpoint_name']}"
   response = requests.request(method='GET', headers=headers, url=endpoint_url)
+  #loop till ready
   while response.json()["state"]["ready"] == "NOT_READY" or response.json()["state"]["config_update"] == "IN_PROGRESS" : # if the endpoint isn't ready, or undergoing config update
     print("Waiting 45s for deployment or update to finish")
     time.sleep(45)
@@ -130,8 +135,6 @@ def list_endpoints():
     displayHTML(f'<font face="courier">{endpoint}</font>')
 
 # COMMAND ----------
-
-# list_endpoints()
 
 #kick off endpoint creation/update
 if not endpoint_exists():

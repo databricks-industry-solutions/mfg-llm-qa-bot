@@ -60,7 +60,7 @@ import json
 
 class MLflowMfgBot(mlflow.pyfunc.PythonModel):
 
-
+  #constructor with args to pass in during model creation
   def __init__(self, configs, automodelconfigs, pipelineconfigs, retriever, huggingface_token):
     self._configs = configs
     self._automodelconfigs = automodelconfigs
@@ -69,12 +69,13 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
     self._huggingface_token = huggingface_token
     self._qa_chain = None
   
+  #do not store qa chain state in serialized model
   def __getstate__(self):
     d = dict(self.__dict__).copy()
     del d['_qa_chain']
     return d
 
-
+  #this is not to be confused with load_model. This is private to this class and called internally by load_context.
   def loadModel(self):
     try:
       print(f'configs {self._configs}' )
@@ -145,14 +146,15 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
       gc.collect()
       torch.cuda.empty_cache()   
     
-  
+
   def load_context(self, context):
     """This method is called when loading an MLflow model with pyfunc.load_model(), as soon as the Python Model is constructed.
     Args:
         context: MLflow context where the model artifact is stored.
     """
     os.environ['HUGGINGFACEHUB_API_TOKEN'] = self._huggingface_token
-      
+    
+    #have to do a bit of extra initialization with llama-2 models since its by invitation only
     if 'lama-2-' in self._configs['model_name']:
       import subprocess
       retval = subprocess.call(f'huggingface-cli login --token {self._huggingface_token}', shell=True)
@@ -167,6 +169,7 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
         template=self._configs['prompt_template'], input_variables=["context", "question"])
     
     chain_type_kwargs = {"prompt":promptTemplate}    
+    #qa chain is recreated. This is not stored with the model.
     self._qa_chain = RetrievalQA.from_chain_type(llm=llm, 
                                           chain_type="stuff", 
                                           retriever=self._retriever, 
@@ -177,6 +180,12 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
 
 
   def predict(self, context, inputs):
+    '''Evaluates a pyfunc-compatible input and produces a pyfunc-compatible output.
+    Only one question can be passed in.
+    Example of input in json split format thats passed to predict.
+    {"dataframe_split":{"columns":["question","filter"],"index":[0],"data":[["what are some properties of Acetaldehyde?",{"Name":"ACETALDEHYDE"}]]}}
+    '''
+
     result = {'answer':None, 'source':None, 'output_metadata':None}
     resultErr = {'answer':'qa_chain is not initalized!', 'source':'MLFlow Model', 'output_metadata':None}
     if self._qa_chain is None:
@@ -191,8 +200,9 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
       filter['fetch_k']=30 #num of documents to get before applying the filter.
     print(question)
     print(filter)
-    #get relevant documents
 
+    #get relevant documents
+    #inject the filter during every predict.
     self._retriever.search_kwargs = filter #{"k": 6, "filter":filterdict, "fetch_k":20}
     doc = self._qa_chain({'query':question})
 
