@@ -17,12 +17,20 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Load mlflow pyfunc wrapper 
+# MAGIC %md
+# MAGIC #### Load mlflow pyfunc wrapper 
+
+# COMMAND ----------
+
 # MAGIC %run ./03_Create_ML
 
 # COMMAND ----------
 
-# DBTITLE 1,Verify Retrieval Augmented Generation is working as expected
+# MAGIC %md 
+# MAGIC #### Verify Retrieval Augmented Generation is working as expected
+
+# COMMAND ----------
+
 # Chroma
 # vectorstore = Chroma(
 #         collection_name="mfg_collection",
@@ -51,7 +59,8 @@ mfgsdsbot = MLflowMfgBot(
 
 # COMMAND ----------
 
-#for testing locally
+#for testing locally. hack a context object.
+
 # context = mlflow.pyfunc.PythonModelContext(artifacts={"prompt_template":configs['prompt_template']})
 # mfgsdsbot.load_context(context)
 # # get response to question
@@ -60,7 +69,11 @@ mfgsdsbot = MLflowMfgBot(
 
 # COMMAND ----------
 
-# DBTITLE 1,Ensure dependencies are passed to the environment in Mlflow
+# MAGIC %md
+# MAGIC #### Ensure dependencies are passed to the environment in Mlflow
+
+# COMMAND ----------
+
 # get base environment configuration
 conda_env = mlflow.pyfunc.get_default_conda_env()
 # define packages required by model
@@ -87,13 +100,17 @@ print(
 
 # COMMAND ----------
 
-# DBTITLE 1,Use the wrapper from 03_Create_ML to log experiment in MLflow
+# MAGIC %md
+# MAGIC #### Use the wrapper we created from 03_Create_ML to log experiment in MLflow
+
+# COMMAND ----------
+
 # persist model to mlflow
 with mlflow.start_run():
   _ = (
     mlflow.pyfunc.log_model(
       python_model=mfgsdsbot,
-      code_path=['./utils/stoptoken.py'],
+      code_path=['./utils/stoptoken.py'], #this is not used but shows how additional classes can be included.
       conda_env=conda_env,
       artifact_path='mfgmodel',
       registered_model_name=configs['registered_model_name']
@@ -103,7 +120,7 @@ with mlflow.start_run():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ##Register model in the [MLflow Model Registry](https://docs.databricks.com/en/mlflow/model-registry.html)
+# MAGIC #### Register model in the [MLflow Model Registry](https://docs.databricks.com/en/mlflow/model-registry.html)
 # MAGIC
 # MAGIC We do this to help enable CI/CD and for ease of deployment in the next notebook.
 
@@ -113,6 +130,7 @@ client = mlflow.MlflowClient()
 
 latest_version = client.get_latest_versions(configs['registered_model_name'], stages=['None'])[0].version
 print(latest_version)
+#transition model to production
 client.transition_model_version_stage(
     name=configs['registered_model_name'],
     version=latest_version,
@@ -123,7 +141,7 @@ client.transition_model_version_stage(
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ##Load model from Model Registry
+# MAGIC #### Load model from Model Registry
 
 # COMMAND ----------
 
@@ -132,7 +150,7 @@ model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}/Pr
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ##Verify model from Registry is returning results as expected
+# MAGIC #### Verify model from Registry is returning results as expected
 
 # COMMAND ----------
 
@@ -191,6 +209,7 @@ print(y)
 
 # COMMAND ----------
 
+#check what the split JSON looks like to pass to our predict function.
 filterdict={'Name':'ACETALDEHYDE'}
 search = {'question':['what are some properties of Acetaldehyde?'],'filter':[filterdict]}
 json = pd.DataFrame.from_dict(search).to_json(orient='split')

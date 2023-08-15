@@ -33,13 +33,12 @@ dbutils.fs.rm(dbfsnormalize(configs['vector_persist_dir']), True)
 
 # COMMAND ----------
 
-# dbutils.fs.ls('/Users/ramdas.murali@databricks.com/chromadb')
-
-# COMMAND ----------
-
 # DBTITLE 1,Define helper functions to extract metadata
 def extractMetadata(docstr):
-  '''extracts the common name from the document'''
+  '''
+  extracts the common name from the document
+  we will use this as metadata for searches
+  '''
   dict = {}
   if 'Common Name:' in docstr:
     matches = re.search(r'(?<=Common Name:)(.*?)(?=Synonyms:|Chemical Name:|Date:|CAS Number:|DOT Number:)', docstr)
@@ -68,10 +67,12 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.vectorstores import FAISS
 import re
 
+#Sentence embeddings. It maps sentences & paragraphs to a 384 dimensional dense vector space
 embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
 
 # vectordb path
 vectordb_path = configs['vector_persist_dir']
+#source data dir for pdfs
 data_dir = configs['data_dir']
 # make sure vectordb path is clear
 dbutils.fs.rm(dbfsnormalize(vectordb_path), recurse=True)
@@ -85,8 +86,10 @@ for idx, path1 in enumerate(pathlst):
     continue
   pdfurl = path1.path.replace(':', '')
   pdfurl = '/' + pdfurl
+  #use langchains pypdf loader
   loader = PyPDFLoader(pdfurl)
   alldocslstloader.append(loader)
+  #list of documents
   pdfdocs = loader.load()
   cleanpdfdocs = []
   metadict={}
@@ -95,10 +98,11 @@ for idx, path1 in enumerate(pathlst):
     doc.page_content=re.sub(r'\n|\uf084', '', doc.page_content)
     if not metadict: #if already extrcacted then use it.
       metadict = extractMetadata(doc.page_content)
-
+    #recreate with cleaned doc
     cleandoc = Document(page_content = doc.page_content, metadata=doc.metadata)
+    #append the doc to list
     cleanpdfdocs.append(cleandoc)
-
+  #It tries to split on them in order until the chunks are small enough. The default list is ["\n\n", "\n", " ", ""]
   splitter = RecursiveCharacterTextSplitter(chunk_size=configs['chunk_size'], 
                                             chunk_overlap=configs['chunk_overlap'])
   texts = splitter.split_documents(cleanpdfdocs)
@@ -106,13 +110,14 @@ for idx, path1 in enumerate(pathlst):
   ids_lst = []
   pages_lst=[]
 
-  #to add more metadata here
+  #add metadata to this block
   for idx2, docs in enumerate(texts):
     #add metadata
     metadata_i = {'source': pdfurl, 'source_dbfs' : path1.path}
     #add extracted metadata from doc
     addMetadataElems(metadict, metadata_i)
     metadata_lst.append(metadata_i)
+    #add unique id
     ids_i = f'id-{idx2}-{idx+1}'
     ids_lst.append(ids_i)
     pages_lst.append(docs.page_content)
@@ -132,7 +137,7 @@ for idx, path1 in enumerate(pathlst):
   #For FAISS
   if vectordb is None: #first time
     vectordb = FAISS.from_texts(pages_lst, embeddings, metadatas=metadata_lst, ids=ids_lst)
-  else:
+  else: #subsequently add the docs, metadata and ids
     vectordb.add_texts(texts=pages_lst, metadatas=metadata_lst, ids=ids_lst)
 vectordb.save_local(vectordb_path)
 
@@ -156,6 +161,7 @@ for key,value in vectorstore.index_to_docstore_id.items():
 # DBTITLE 1,Demonstrate similarity search and show sources
 def similarity_search(question, filterdict, k=100):
   #fetch_K - Number of Documents to fetch before filtering.
+  #filterdict restrict to that subset of docs with that metadata
   matched_docs = vectorstore.similarity_search(question, k=k, filter=filterdict, fetch_k=100)
   sources = []
   content = []
@@ -171,13 +177,14 @@ def similarity_search(question, filterdict, k=100):
 
   return matched_docs, sources, content
 
-
+#test similarity search
 matched_docs, sources, content = similarity_search('What happens with acetaldehyde chemical exposure?', {'Name':'ACETALDEHYDE'}, 10)
 #print(content)
 print(sources)
 
 # COMMAND ----------
 
+#test similarity search
 matched_docs, sources, content = similarity_search('what happens if there are hazardous substances?', {'Name':'ACETONITRILE'})
 content
 sources

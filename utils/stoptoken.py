@@ -1,4 +1,4 @@
-#currently not used but example of how to include stopping criteria in mlflow model
+#currently not used but example of how to include stopping criteria in the mlflow model. This is a callback that requires an inherited class 
 import torch
 from transformers import StoppingCriteria, StoppingCriteriaList, AutoTokenizer
 

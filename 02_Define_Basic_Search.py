@@ -5,7 +5,7 @@
 
 # MAGIC %md ##Define Basic Search
 # MAGIC
-# MAGIC In this notebook, we will test out loading the vector database for similarity search. Additionally, we create a simple example of combining the open sourced LLM (defined in the /utils/configs) and the similarity search as a retriever.
+# MAGIC In this notebook, we will test out loading the vector database for similarity search. Additionally, we create a simple example of combining the open sourced LLM (defined in the /utils/configs) and the similarity search as a retriever. Think of this as a stand-alone implementation without any MLFlow packaging
 # MAGIC
 # MAGIC
 # MAGIC <p>
@@ -56,6 +56,9 @@ embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-
 # Load from FAISS
 vectorstore = FAISS.load_local(vector_persist_dir, embeddings)
 
+#fetch_k : amount of documents to fetch to pass into search algorithm
+# k: amount of documents to return
+# filter = any keywords to pre-filter docs on
 def similarity_search(question, filter={}, fetch_k=100, k=12):
   matched_docs = vectorstore.similarity_search(question, filter=filter, fetch_k=fetch_k, k=k)
   sources = []
@@ -97,9 +100,12 @@ print(matched_docs)
 
 # COMMAND ----------
 
+#configs for the model are externalized in var automodelconfigs
+
 device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
 
 print(f"{configs['model_name']} using configs {automodelconfigs}")
+#account for small variations in code for loading models between models
 if 'mpt' in configs['model_name']:
   modconfig = transformers.AutoConfig.from_pretrained(configs['model_name'] ,
     trust_remote_code=True
@@ -134,11 +140,12 @@ print(f"Model loaded on {device}")
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC The pipeline requires a tokenizer which handles the translation of human readable plaintext to LLM readable token IDs. The tiiuae/falcon-7B model was trained using the `EleutherAI/gpt-neox-20b` tokenizer, which we initialize like so:
+# MAGIC The pipeline requires a tokenizer which handles the translation of human readable plaintext to LLM readable token IDs. The Huggingface model card will give you info on the tokenizer
 
 # COMMAND ----------
 
 token_model= configs['tokenizer_name']
+#load the tokenizer
 tokenizer = transformers.AutoTokenizer.from_pretrained(token_model)
 
 
@@ -172,6 +179,7 @@ stopping_criteria = StoppingCriteriaList([StopOnTokens()])
 
 # MAGIC %md
 # MAGIC Now we're ready to initialize the HF pipeline. There are a few additional parameters that we must define here. Comments explaining these have been included in the code.
+# MAGIC The easiest way to tackle NLP tasks is to use the pipeline function. It connects a model with its necessary pre-processing and post-processing steps. This allows you to directly input any text and get an answer.
 
 # COMMAND ----------
 
@@ -196,6 +204,8 @@ else:
 
 # MAGIC %md
 # MAGIC The next block of code is the critical element to understand how the vectorstore is being passed to the QA chain as a retriever (the retrieval augmentation)
+# MAGIC
+# MAGIC Additional ref docs [here](https://api.python.langchain.com/en/latest/chains/langchain.chains.retrieval_qa.base.RetrievalQA.html)
 
 # COMMAND ----------
 
@@ -205,6 +215,11 @@ promptTemplate = PromptTemplate(
         template=configs['prompt_template'], input_variables=["context", "question"])
 chain_type_kwargs = {"prompt":promptTemplate}
 
+# metadata filtering logic internal implementation, if interested, in 
+# def similarity_search_with_score_by_vector in
+# https://github.com/langchain-ai/langchain/blob/master/libs/langchain/langchain/vectorstores/faiss.py
+
+# To test metadata based filtering.
 #filterdict={'Name':'ACETALDEHYDE'}
 filterdict={}
 retriever = vectorstore.as_retriever(search_kwargs={"k": configs['num_similar_docs'], "filter":filterdict}, search_type = "similarity")
@@ -218,7 +233,13 @@ qa_chain = RetrievalQA.from_chain_type(llm=llm,
 
 # COMMAND ----------
 
+# MAGIC %md Optionally dynamically pass a filter into the chain to pre-filter docs
+
+# COMMAND ----------
+
 #filterdict={'Name':'ACETONE'}
+
+# fetch_k Amount of documents to pass to search algorithm
 retriever.search_kwargs = {"k": 6, "filter":filterdict, "fetch_k":30}
 res = qa_chain({"query":"What issues can acetone exposure cause"})
 print(res)
@@ -252,7 +273,7 @@ res
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC We still get the same output as we're not really doing anything differently here, but we have now added MTP-7B-instruct to the LangChain library. Using this we can now begin using LangChain's advanced agent tooling, chains, etc, with MTP-7B.
+# MAGIC ##### Cleanup. Need to find a predictable way of releasing/cleaning up GPU resources
 
 # COMMAND ----------
 
@@ -263,7 +284,3 @@ res
 #     torch.cuda.empty_cache()
 # import gc
 # gc.collect()
-
-# COMMAND ----------
-
-# MAGIC %fs ls /Users/ramdas.murali@databricks.com/
