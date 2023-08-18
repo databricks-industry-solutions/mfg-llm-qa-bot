@@ -14,7 +14,7 @@
 # MAGIC
 # MAGIC This notebook was tested on the following infrastructure:
 # MAGIC * DBR 13.2ML (GPU)
-# MAGIC * g5.4xlarge (AWS) - however comparable infra on Azure should work (A10s)
+# MAGIC * g5.4xlarge or g5.8xlarge (AWS) - however comparable infra on Azure should work (A10s)
 
 # COMMAND ----------
 
@@ -96,7 +96,7 @@ print(matched_docs)
 # MAGIC
 # MAGIC We'll explain these as we get to them, let's begin with our model.
 # MAGIC
-# MAGIC We initialize the model and move it to our CUDA-enabled GPU. Using Colab this can take 5-10 minutes to download and initialize the model.
+# MAGIC We initialize the model using the externalized configs such as automodelconfigs and pipelineconfigs
 
 # COMMAND ----------
 
@@ -160,7 +160,7 @@ tokenizer = transformers.AutoTokenizer.from_pretrained(token_model)
 from transformers import StoppingCriteria, StoppingCriteriaList
 
 
-# mtp-7b is trained to add "<|endoftext|>" at the end of generations
+# for example. mtp-7b is trained to add "<|endoftext|>" at the end of generations
 stop_token_ids = tokenizer.convert_tokens_to_ids(["<|endoftext|>"])
 print(stop_token_ids)
 print(tokenizer.eos_token)
@@ -273,7 +273,7 @@ res
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ##### Cleanup. Need to find a predictable way of releasing/cleaning up GPU resources
+# MAGIC Optional Cleanup
 
 # COMMAND ----------
 
