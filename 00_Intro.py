@@ -1,5 +1,8 @@
 # Databricks notebook source
-# MAGIC %md The purpose of this notebook is to provide access to chemical safety data used by the Manufacturing LLM QA bot solution accelerator.  You may find this notebook on https://github.com/databricks-industry-solutions/mfg-llm-qa-bot.
+# MAGIC %md 
+# MAGIC # Manufacturing QA over Custom Datasets with 🦜️🔗 LangChain and Open Source LLMs on Hugging Face 🤗
+# MAGIC
+# MAGIC The purpose of this notebook is to provide a pattern for the building and deployment of LLMs for a Manufacturing use case.  You may find this notebook on https://github.com/databricks-industry-solutions/mfg-llm-qa-bot.
 
 # COMMAND ----------
 
@@ -15,7 +18,7 @@
 # MAGIC <img src='https://brysmiwasb.blob.core.windows.net/demos/images/bot_flow.png' width=500>
 # MAGIC
 # MAGIC </p>
-# MAGIC To assemble this application, *i.e.* the Q&A Bot, we will need to assemble a series of documents that are relevant to the domain we wish to serve.  We will need to index these using a vector database. We will then need to assemble the core application which combines a question with a document to form a prompt and submits that prompt to a model in order to generate a response. Finally, we'll need to package both the indexed documents and the core application component as a microservice to enable a wide range of deployment options.
+# MAGIC To assemble this application, i.e. the Q&A Bot, we will need to assemble a series of documents that are relevant to the domain we wish to serve.  We will need to index these using a vector database. We will then need to assemble the core application which combines a question with a document to form a prompt and submits that prompt to a model in order to generate a response. Finally, we'll need to package both the indexed documents and the core application component as a microservice to enable a wide range of deployment options.
 # MAGIC
 # MAGIC We will tackle these steps across the following notebooks:</p>
 # MAGIC

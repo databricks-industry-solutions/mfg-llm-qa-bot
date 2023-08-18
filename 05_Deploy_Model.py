@@ -136,7 +136,7 @@ def list_endpoints():
 
 # COMMAND ----------
 
-#kick off endpoint creation/update
+#launch endpoint creation/update
 if not endpoint_exists():
   create_endpoint()
   wait_for_endpoint()
