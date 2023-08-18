@@ -151,6 +151,7 @@ model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}/Pr
 
 # MAGIC %md
 # MAGIC #### Verify model from Registry is returning results as expected
+# MAGIC We test this on various queries
 
 # COMMAND ----------
 
