@@ -18,7 +18,11 @@
 
 # COMMAND ----------
 
-# DBTITLE 1,Install required libraries
+# MAGIC %md
+# MAGIC #### Install required libraries
+
+# COMMAND ----------
+
 # MAGIC %pip install -U langchain==0.0.203 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0 
 
 # COMMAND ----------
@@ -27,7 +31,11 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
-# DBTITLE 1,Load in common configs
+# MAGIC %md
+# MAGIC #### Load in common configs
+
+# COMMAND ----------
+
 # MAGIC %run "./utils/configs"
 
 # COMMAND ----------
@@ -160,7 +168,7 @@ tokenizer = transformers.AutoTokenizer.from_pretrained(token_model)
 from transformers import StoppingCriteria, StoppingCriteriaList
 
 
-# for example. mtp-7b is trained to add "<|endoftext|>" at the end of generations
+# for example. mpt-7b is trained to add "<|endoftext|>" at the end of generations
 stop_token_ids = tokenizer.convert_tokens_to_ids(["<|endoftext|>"])
 print(stop_token_ids)
 print(tokenizer.eos_token)
