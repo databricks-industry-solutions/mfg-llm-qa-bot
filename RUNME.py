@@ -119,7 +119,7 @@ job_json = {
                 ]
             },
             {
-                "job_cluster_key": "mfg_qa_cluster",
+                "job_cluster_key": "mfg_qa_app_cluster",
                 "notebook_task": {
                     "notebook_path": f"05_Deploy_Model"
                 },
@@ -131,7 +131,7 @@ job_json = {
                 ]
             },
             {
-                "job_cluster_key": "mfg_qa_cluster",
+                "job_cluster_key": "mfg_qa_app_cluster",
                 "notebook_task": {
                     "notebook_path": f"06_Example_App"
                 },
@@ -158,9 +158,23 @@ job_json = {
                     "custom_tags": {
                         "usage": "solacc_testing"
                     },
-                },
-                # "single_user_name": dbutils.notebook.entry_point.getDbutils().notebook().getContext().userName().get(),
-                # "data_security_mode": "LEGACY_SINGLE_USER_STANDARD",
+                }
+            },
+            {
+                "job_cluster_key": "mfg_qa_app_cluster",
+                "new_cluster": {
+                    "spark_version": "13.3.x-cpu-ml-scala2.12",
+                "spark_conf": {
+                    "spark.master": "local[*, 4]",
+                    "spark.databricks.cluster.profile": "singleNode",
+                    "spark.databricks.delta.preview.enabled": "true"
+                    },
+                    "num_workers": 0,
+                    "node_type_id": {"AWS": "i3.xlarge", "MSA": "Standard_DS3_v2"}, # this accelerator does not support GCP
+                    "custom_tags": {
+                        "usage": "solacc_testing"
+                    },
+                }
             }
         ]
     }
@@ -171,3 +185,7 @@ job_json = {
 dbutils.widgets.dropdown("run_job", "False", ["True", "False"])
 run_job = dbutils.widgets.get("run_job") == "True"
 nsc.deploy_compute(job_json, run_job=run_job)
+
+# COMMAND ----------
+
+
