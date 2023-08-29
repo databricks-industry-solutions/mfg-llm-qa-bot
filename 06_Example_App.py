@@ -15,6 +15,10 @@
 
 # COMMAND ----------
 
+# MAGIC %pip install gradio
+
+# COMMAND ----------
+
 # MAGIC %run ./utils/configs
 
 # COMMAND ----------
@@ -26,8 +30,8 @@ import pandas as pd
 import json
 import gradio as gr
 
-endpoint= config['serving_endpoint_name']
-endpoint_url = f"""{os.environ['DATABRICKS_HOST']}/serving-endpoints/{endpoint}/invocations"""
+endpoint= configs['serving_endpoint_name']
+endpoint_url = f"""{os.environ['DATABRICKS_URL']}/serving-endpoints/{endpoint}/invocations"""
 
 
 def create_tf_serving_json(data):
@@ -113,7 +117,7 @@ with gr.Blocks( theme=gr.themes.Soft()) as demo:
     srcshow.change(srcshowfn, inputs=srcshow, outputs=outputsrc)
     greet_btn.click(fn=greet, inputs=[input, inputfilter], outputs=[output, outputsrc], api_name="greet")
     
-demo.launch()  
+demo.launch(share=True)  
 
 
 # COMMAND ----------
