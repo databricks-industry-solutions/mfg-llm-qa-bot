@@ -15,7 +15,7 @@
 
 # COMMAND ----------
 
-# MAGIC %run ./utils/config
+# MAGIC %run ./utils/configs
 
 # COMMAND ----------
 
