@@ -5,7 +5,7 @@
 
 # MAGIC %md ##Example Application
 # MAGIC
-# MAGIC This is an example application that you can leverage to make an api call to the model that's now hosted in Databricks model serving. This application can be hosted locally, on Huggingface Spaces, on a Databricks VM or any other VM that can run Python.
+# MAGIC This is an example application that you can leverage to make an api call to the model that's now hosted in Databricks model serving. This application can be hosted locally, on Huggingface Spaces, on a Databricks VM or any other VM that can run Python. For more info on gradio, visit https://www.gradio.app/guides/quickstart
 # MAGIC
 # MAGIC
 # MAGIC <p>
@@ -30,8 +30,8 @@ import pandas as pd
 import json
 import gradio as gr
 
-endpoint= configs['serving_endpoint_name']
-endpoint_url = f"""{os.environ['DATABRICKS_URL']}/serving-endpoints/{endpoint}/invocations"""
+endpoint=configs['serving_endpoint_name']
+endpoint_url = f"""{os.environ['DATABRICKS_HOST']}/serving-endpoints/{endpoint}/invocations"""
 
 
 def create_tf_serving_json(data):
@@ -85,14 +85,6 @@ def srcshowfn(chkbox):
     print(vis)
     return gr.Textbox.update(visible=vis)
 
-# demo = gr.Interface(
-#     fn=greet,
-#     title="Chemical Q&A Bot",
-#     description="This bot has been trained on chemical fact sheets from https://web.doh.state.nj.us/rtkhsfs/factsheets.aspx. For the purposes of this demo, we have only downloaded the chemicals that start with A. The fact sheets were transformed into embeddings and are used as a retriever for the model. Langchain was then used to compile the model, which is then hosted on Databricks MLflow. The application simply makes an API call to the model that's hosted in Databricks.", 
-    
-#     inputs=gr.Textbox(placeholder="ex. What should I do if I spill acetone? or What happens if arsenic gets on my skin?"),
-#     outputs="text")
-
 with gr.Blocks( theme=gr.themes.Soft()) as demo:
     with gr.Row():
         gr.HTML(show_label=False, value="<img src='https://databricks.gallerycdn.vsassets.io/extensions/databricks/databricks/0.3.15/1686753455931/Microsoft.VisualStudio.Services.Icons.Default' height='30' width='30'/><div font size='1'>Manufacturing</div>")
@@ -127,3 +119,7 @@ demo.launch(share=True)
 # MAGIC | library                                | description             | license    | source                                              |
 # MAGIC |----------------------------------------|-------------------------|------------|-----------------------------------------------------|
 # MAGIC |  Gradio | Build Machine Learning Web Apps in Python |  Apache Software License  |   https://pypi.org/project/gradio/ |
+
+# COMMAND ----------
+
+

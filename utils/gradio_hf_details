@@ -1,2 +1,5 @@
+# This code is used to download the latest code from the huggingface repo. 
+# The downloaded code is the same as 06_Example_App
+
 git lfs install
 git clone https://huggingface.co/spaces/databricksMFG/DB-MFG-Accel
