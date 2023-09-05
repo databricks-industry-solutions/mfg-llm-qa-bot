@@ -31,7 +31,7 @@ import json
 import gradio as gr
 
 endpoint=configs['serving_endpoint_name']
-endpoint_url = f"""{os.environ['DATABRICKS_HOST']}/serving-endpoints/{endpoint}/invocations"""
+endpoint_url = f"""{os.environ['DATABRICKS_URL']}/serving-endpoints/{endpoint}/invocations"""
 
 
 def create_tf_serving_json(data):
