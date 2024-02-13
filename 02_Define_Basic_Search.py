@@ -13,17 +13,26 @@
 # MAGIC </p>
 # MAGIC
 # MAGIC This notebook was tested on the following infrastructure:
-# MAGIC * DBR 13.2ML (GPU)
-# MAGIC * g5.4xlarge or g5.8xlarge (AWS) - however comparable infra on Azure should work (A10s)
+# MAGIC * DBR 13.3ML (GPU)
+# MAGIC * g5.2xlarge(AWS) - however comparable infra on Azure should work (A10s)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #### Install required libraries
+# MAGIC CUDA [memory management flag](https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
 
 # COMMAND ----------
 
-# MAGIC %pip install -U langchain==0.0.203 transformers==4.30.1 accelerate==0.20.3 einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0 
+# MAGIC %sh export 'PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512'
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Install Libraries
+
+# COMMAND ----------
+
+# MAGIC %pip install --upgrade langchain==0.1.6 transformers==4.37.2 databricks-vectorsearch==0.22 mlflow[databricks] xformers==0.0.24  accelerate==0.27.0
 
 # COMMAND ----------
 
@@ -31,16 +40,10 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC #### Load in common configs
-
-# COMMAND ----------
-
 # MAGIC %run "./utils/configs"
 
 # COMMAND ----------
 
-from langchain.vectorstores import FAISS
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.prompts import PromptTemplate
 from torch import cuda, bfloat16,float16
@@ -48,50 +51,24 @@ import transformers
 from langchain import HuggingFacePipeline
 from transformers import AutoTokenizer, pipeline
 from langchain.chains import RetrievalQA
+from databricks.vector_search.client import VectorSearchClient
+from langchain.vectorstores import DatabricksVectorSearch
+from langchain.embeddings import DatabricksEmbeddings
+import torch
+import gc
 
 # COMMAND ----------
 
-# MAGIC %md 
-# MAGIC ##Test Similarity search
-# MAGIC
-# MAGIC In the code below we are loading in the vector store that we defined in the previous notebook with the embedding model that we used to create the vector database. In this case, we are using the [FAISS library from Meta](https://engineering.fb.com/2017/03/29/data-infrastructure/faiss-a-library-for-efficient-similarity-search/) to store our embeddings. 
+def reconvertVals(configs):
+  ''' Convert string values in config to the right types'''
+  for key in configs:
+    if key in ['trust_remote_code', 'return_full_text', 'low_cpu_mem_usage'] and configs[key] is not None:
+      configs[key] = bool(configs[key])
+    if key in 'torch_dtype' and isinstance(configs['torch_dtype'], str) and configs['torch_dtype'] in 'torch.bfloat16':
+      configs['torch_dtype'] = torch.bfloat16
+    if key in 'torch_dtype' and isinstance(configs['torch_dtype'], str) and configs['torch_dtype'] in 'torch.float16':
+      configs['torch_dtype'] = torch.float16
 
-# COMMAND ----------
-
-vector_persist_dir = configs['vector_persist_dir']
-embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
-
-# Load from FAISS
-vectorstore = FAISS.load_local(vector_persist_dir, embeddings)
-
-#fetch_k : amount of documents to fetch to pass into search algorithm
-# k: amount of documents to return
-# filter = any keywords to pre-filter docs on
-def similarity_search(question, filter={}, fetch_k=100, k=12):
-  matched_docs = vectorstore.similarity_search(question, filter=filter, fetch_k=fetch_k, k=k)
-  sources = []
-  content = []
-  for doc in matched_docs:
-    sources.append(
-        {
-            "page_content": doc.page_content,
-            "metadata": doc.metadata,
-        }
-    )
-    content.append(doc.page_content)
-    
-
-  return matched_docs, sources, content
-
-
-matched_docs, sources, content = similarity_search('Who provides recommendations on workspace safety on Acetone', {'Name':'ACETONE'})
-print(content)
-print(matched_docs)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Initializing the Hugging Face Pipeline
 
 # COMMAND ----------
 
@@ -105,45 +82,62 @@ print(matched_docs)
 # MAGIC We'll explain these as we get to them, let's begin with our model.
 # MAGIC
 # MAGIC We initialize the model using the externalized configs such as automodelconfigs and pipelineconfigs
+# MAGIC
+# MAGIC
+# MAGIC [Langchain source](https://github.com/langchain-ai/langchain/blob/master/libs/community/langchain_community/vectorstores/databricks_vector_search.py)
+# MAGIC
+# MAGIC
 
 # COMMAND ----------
 
 #configs for the model are externalized in var automodelconfigs
+try:
+  device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
+  reconvertVals(automodelconfigs)
+  reconvertVals(pipelineconfigs)
+  print(f"{configs['model_name']} using configs {automodelconfigs}")
+  #account for small variations in code for loading models between models
+  if 'mpt' in configs['model_name']:
+    modconfig = transformers.AutoConfig.from_pretrained(configs['model_name'] ,
+      trust_remote_code=True
+    )
+    #modconfig.attn_config['attn_impl'] = 'triton'
+    model = transformers.AutoModelForCausalLM.from_pretrained(
+        configs['model_name'],
+        config=modconfig,
+        **automodelconfigs
+    )
+  elif 'flan' in configs['model_name']:
+    model = transformers.AutoModelForSeq2SeqLM.from_pretrained(
+        configs['model_name'],
+        **automodelconfigs
+    )
+  else:
+    model = transformers.AutoModelForCausalLM.from_pretrained(
+        configs['model_name'],
+        **automodelconfigs
+    )
 
-device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
+  #  model.to(device) -> `.to` is not supported for `4-bit` or `8-bit` models.
+  listmc = automodelconfigs.keys()
 
-print(f"{configs['model_name']} using configs {automodelconfigs}")
-#account for small variations in code for loading models between models
-if 'mpt' in configs['model_name']:
-  modconfig = transformers.AutoConfig.from_pretrained(configs['model_name'] ,
-    trust_remote_code=True
-  )
-  #modconfig.attn_config['attn_impl'] = 'triton'
-  model = transformers.AutoModelForCausalLM.from_pretrained(
-      configs['model_name'],
-      config=modconfig,
-      **automodelconfigs
-  )
-elif 'flan' in configs['model_name']:
-  model = transformers.AutoModelForSeq2SeqLM.from_pretrained(
-      configs['model_name'],
-      **automodelconfigs
-  )
-else:
-  model = transformers.AutoModelForCausalLM.from_pretrained(
-      configs['model_name'],
-      **automodelconfigs
-  )
+  # if 'load_in_4bit' not in listmc and 'load_in_8bit' not in listmc:
+  #   model.eval()
+  #   model.to(device)
+  
+  if 'RedPajama' in configs['model_name']:
+    model.tie_weights()
 
-#  model.to(device) -> `.to` is not supported for `4-bit` or `8-bit` models.
-listmc = automodelconfigs.keys()
-if 'load_in_4bit' not in listmc and 'load_in_8bit' not in listmc:
-  model.eval()
-  model.to(device)
-if 'RedPajama' in configs['model_name']:
-  model.tie_weights()
+  print(f"Model loaded on {device}")
 
-print(f"Model loaded on {device}")
+except Exception as e:
+  print('-----')
+  print(e)
+  gc.collect()
+  torch.cuda.empty_cache()   
+
+
+
 
 # COMMAND ----------
 
@@ -156,7 +150,6 @@ token_model= configs['tokenizer_name']
 #load the tokenizer
 tokenizer = transformers.AutoTokenizer.from_pretrained(token_model)
 
-
 # COMMAND ----------
 
 # MAGIC %md
@@ -167,12 +160,12 @@ tokenizer = transformers.AutoTokenizer.from_pretrained(token_model)
 #If Stopping Criteria is needed
 from transformers import StoppingCriteria, StoppingCriteriaList
 
-
 # for example. mpt-7b is trained to add "<|endoftext|>" at the end of generations
 stop_token_ids = tokenizer.convert_tokens_to_ids(["<|endoftext|>"])
 print(stop_token_ids)
 print(tokenizer.eos_token)
 print(stop_token_ids)
+
 # define custom stopping criteria object
 class StopOnTokens(StoppingCriteria):
   def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor, **kwargs) -> bool:
@@ -185,17 +178,13 @@ stopping_criteria = StoppingCriteriaList([StopOnTokens()])
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC Now we're ready to initialize the HF pipeline. There are a few additional parameters that we must define here. Comments explaining these have been included in the code.
-# MAGIC The easiest way to tackle NLP tasks is to use the pipeline function. It connects a model with its necessary pre-processing and post-processing steps. This allows you to directly input any text and get an answer.
-
-# COMMAND ----------
-
 # device=device, -> `.to` is not supported for `4-bit` or `8-bit` models.
+# accelerate lib prints this
+# The model has been loaded with `accelerate` and therefore cannot be moved to a specific device. Please discard the `device` argument when creating your pipeline object.
 if 'load_in_4bit' not in listmc and 'load_in_8bit' not in listmc:
   generate_text = transformers.pipeline(
       model=model, tokenizer=tokenizer,
-      device=device,
+      #device=device,
       pad_token_id=tokenizer.eos_token_id,
       #stopping_criteria=stopping_criteria,
       **pipelineconfigs
@@ -206,12 +195,42 @@ else:
       pad_token_id=tokenizer.eos_token_id,
       #stopping_criteria=stopping_criteria,
       **pipelineconfigs
-  )  
+  )       
+
+
+
+
+# COMMAND ----------
+
+def get_retriever():
+    '''Get the langchain vector retriever from the Databricks object '''
+    vsc = VectorSearchClient(workspace_url=configs["DATABRICKS_URL"], personal_access_token=configs['DATABRICKS_TOKEN'])  
+    index = vsc.get_index(endpoint_name=configs['vector_endpoint_name'], 
+                          index_name=f"{configs['source_catalog']}.{configs['source_schema']}.{configs['vector_index']}")
+
+    index.describe()
+    # Create the langchain retriever. text_columns-> chunks column
+    # return columns metadata_name and path along with results.
+    # embedding is None for Databricks managed embedding
+    vectorstore = DatabricksVectorSearch(
+        index, text_column="chunks", embedding=None, columns=['metadata_name', 'path']
+    )
+    #filter isnt working here
+    return vectorstore.as_retriever(search_kwargs={"k": configs["num_similar_docs"]}, search_type = "similarity")
+
+
+# test our retriever
+retriever = get_retriever()
+similar_documents = retriever.get_relevant_documents("How can I contact OSHA?")
+print(f"Relevant documents: {similar_documents}")
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC The next block of code is the critical element to understand how the vectorstore is being passed to the QA chain as a retriever (the retrieval augmentation)
+# MAGIC Now we're ready to initialize the HF pipeline. There are a few additional parameters that we must define here. Comments explaining these have been included in the code.
+# MAGIC The easiest way to tackle NLP tasks is to use the pipeline function. It connects a model with its necessary pre-processing and post-processing steps. This allows you to directly input any text and get an answer.
+# MAGIC
+# MAGIC This is the critical element to understand how the Databricks vectorstore is being passed to the QA chain as a retriever (the retrieval augmentation)
 # MAGIC
 # MAGIC Additional ref docs [here](https://api.python.langchain.com/en/latest/chains/langchain.chains.retrieval_qa.base.RetrievalQA.html)
 
@@ -221,7 +240,7 @@ llm = HuggingFacePipeline(pipeline=generate_text)
 
 promptTemplate = PromptTemplate(
         template=configs['prompt_template'], input_variables=["context", "question"])
-chain_type_kwargs = {"prompt":promptTemplate}
+chain_type_kwargs = {"prompt":promptTemplate, "verbose":True} #change to verbose true for printing out entire prompt 
 
 # metadata filtering logic internal implementation, if interested, in 
 # def similarity_search_with_score_by_vector in
@@ -230,12 +249,16 @@ chain_type_kwargs = {"prompt":promptTemplate}
 # To test metadata based filtering.
 #filterdict={'Name':'ACETALDEHYDE'}
 filterdict={}
-retriever = vectorstore.as_retriever(search_kwargs={"k": configs['num_similar_docs'], "filter":filterdict}, search_type = "similarity")
+
+#get the langchain wrapper around the databricks Vector search
+retriever = get_retriever()
+
+#retriever = vectorstore.as_retriever(search_kwargs={"k": configs['num_similar_docs'], "filter":filterdict}, search_type = "similarity")
 
 qa_chain = RetrievalQA.from_chain_type(llm=llm, 
                                        chain_type="stuff", 
                                        retriever=retriever, 
-                                       return_source_documents=True,
+                                       return_source_documents=False,
                                        chain_type_kwargs=chain_type_kwargs,
                                        verbose=False)
 
@@ -245,25 +268,31 @@ qa_chain = RetrievalQA.from_chain_type(llm=llm,
 
 # COMMAND ----------
 
+#filterdict={'Name':'ACETALDEHYDE'} #doesnt work
+print(retriever.search_kwargs)
+# fetch_k Amount of documents to pass to search algorithm
+#retriever.search_kwargs = {"k": 6, "filter":filterdict, "fetch_k":30}
+question = {"query": "What issues can acetone exposure cause"}
+answer = qa_chain.invoke(question)
+print(answer)
+#print(res['result'])
+
+# COMMAND ----------
+
 #filterdict={'Name':'ACETONE'}
 
 # fetch_k Amount of documents to pass to search algorithm
 retriever.search_kwargs = {"k": 6, "filter":filterdict, "fetch_k":30}
-res = qa_chain({"query":"What issues can acetone exposure cause"})
+res = qa_chain.invoke({"query":"What issues can acetone exposure cause"})
 print(res)
 
 print(res['result'])
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC Confirm this is working:
-
-# COMMAND ----------
-
 filterdict={}
 retriever.search_kwargs = {"k": 6, "filter":filterdict, "fetch_k":20}
-res = qa_chain({"query":"Explain to me the difference between nuclear fission and fusion."})
+res = qa_chain.invoke({"query":"Explain to me the difference between nuclear fission and fusion."})
 res
 
 #print(res['result'])
@@ -272,7 +301,7 @@ res
 
 filterdict={}
 retriever.search_kwargs = {"k": 6, "filter":filterdict, "fetch_k":40}
-res = qa_chain({'query':'what should we do if OSHA is involved?'})
+res = qa_chain.invoke({'query':'what should we do if OSHA is involved?'})
 res
 
 #print(res['result'])
@@ -281,14 +310,18 @@ res
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Optional Cleanup
+# MAGIC Cleanup(Optional)
 
 # COMMAND ----------
 
-# del qa_chain
-# del tokenizer
-# del model
-# with torch.no_grad():
-#     torch.cuda.empty_cache()
-# import gc
-# gc.collect()
+del qa_chain
+del tokenizer
+del model
+with torch.no_grad():
+    torch.cuda.empty_cache()
+import gc
+gc.collect()
+
+# COMMAND ----------
+
+

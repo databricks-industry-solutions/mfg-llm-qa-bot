@@ -12,13 +12,13 @@
 # MAGIC </p>
 # MAGIC
 # MAGIC This notebook was tested on the following infrastructure:
-# MAGIC * DBR 13.2ML (GPU)
-# MAGIC * g5.4xlarge (AWS) - however comparable infra on Azure should work (A10s)
+# MAGIC * DBR 13.3ML (GPU)
+# MAGIC * g5.2xlarge (AWS) - however comparable infra on Azure should work (A10s)
 
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #### Load mlflow pyfunc wrapper 
+# MAGIC Load mlflow pyfunc wrapper 
 
 # COMMAND ----------
 
@@ -26,51 +26,8 @@
 
 # COMMAND ----------
 
-# MAGIC %md 
-# MAGIC #### Verify Retrieval Augmented Generation is working as expected
-
-# COMMAND ----------
-
-# Chroma
-# vectorstore = Chroma(
-#         collection_name="mfg_collection",
-#         persist_directory=self._configs['chroma_persist_dir'],
-#         embedding_function=HuggingFaceHubEmbeddings(repo_id='sentence-transformers/all-MiniLM-L6-v2'))
-
-#FAISS
-vector_persist_dir = configs['vector_persist_dir']
-embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
-
-# # Load from FAISS
-vectorstore = FAISS.load_local(vector_persist_dir, embeddings)
-retriever = vectorstore.as_retriever(search_kwargs={"k": configs['num_similar_docs']}, 
-                                                search_type = "similarity") 
-
-# instantiate bot object
-mfgsdsbot = MLflowMfgBot(
-        configs,
-        automodelconfigs,
-        pipelineconfigs,
-        retriever,
-        os.environ['HUGGINGFACEHUB_API_TOKEN'])
-
-
-
-
-# COMMAND ----------
-
-#for testing locally. hack a context object.
-
-# context = mlflow.pyfunc.PythonModelContext(artifacts={"prompt_template":configs['prompt_template']})
-# mfgsdsbot.load_context(context)
-# # get response to question
-# filterdict={'Name':'ACETONE'}
-# mfgsdsbot.predict(context, {'questions':['when should OSHA get involved on acetone exposure?'], 'search_kwargs':{"k": 10, "filter":filterdict, "fetch_k":100}})
-
-# COMMAND ----------
-
 # MAGIC %md
-# MAGIC #### Ensure dependencies are passed to the environment in Mlflow
+# MAGIC Ensure dependencies are passed to the environment in Mlflow
 
 # COMMAND ----------
 
@@ -79,17 +36,13 @@ conda_env = mlflow.pyfunc.get_default_conda_env()
 # define packages required by model
 
 packages = [
-  f'langchain==0.0.203',
-  f'transformers==4.30.1',
-  f'accelerate==0.20.3',
-  f'einops==0.6.1',
-  f'xformers==0.0.20',
-  f'sentence-transformers==2.2.2',
-  f'typing-inspect==0.8.0',
-  f'typing_extensions==4.5.0',
-  f'faiss-cpu==1.7.4', 
-  f'tiktoken==0.4.0'
-  ]
+  f'langchain==0.1.6',
+  f'databricks-vectorsearch==0.22',
+  f'mlflow[databricks]',
+  f'xformers==0.0.24',
+  f'transformers==4.37.2',
+  f'accelerate==0.27.0'
+]
 
 # add required packages to environment configuration
 conda_env['dependencies'][-1]['pip'] += packages
@@ -100,12 +53,39 @@ print(
 
 # COMMAND ----------
 
+# instantiate bot object
+mfgsdsbot = MLflowMfgBot()
+
+
+# COMMAND ----------
+
 # MAGIC %md
-# MAGIC #### Use the wrapper we created from 03_Create_ML to log experiment in MLflow
+# MAGIC For testing locally. hack a context object.
+
+# COMMAND ----------
+
+
+# context = mlflow.pyfunc.PythonModelContext(
+#                                            model_config={"configs":json.dumps(configs),
+#                  "automodelconfigs":str(automodelconfigs),
+#                  "pipelineconfigs":str(pipelineconfigs)},
+#                                            artifacts=None
+                                           
+#                                            )
+# mfgsdsbot.load_context(context)
+# # get response to question
+# filterdict={'Name':'ACETONE'}
+# mfgsdsbot.predict(context, {'questions':['when should OSHA get involved on acetone exposure?'], 'search_kwargs':{"k": 10, "filter":filterdict, "fetch_k":100}})
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Use the wrapper we created from 03_Create_ML to log experiment in MLflow
 
 # COMMAND ----------
 
 # persist model to mlflow
+import json
 with mlflow.start_run():
   _ = (
     mlflow.pyfunc.log_model(
@@ -113,6 +93,9 @@ with mlflow.start_run():
       code_path=['./utils/stoptoken.py'], #this is not used but shows how additional classes can be included.
       conda_env=conda_env,
       artifact_path='mfgmodel',
+      model_config={"configs":json.dumps(configs),
+                 "automodelconfigs":str(automodelconfigs),
+                 "pipelineconfigs":str(pipelineconfigs)},
       registered_model_name=configs['registered_model_name']
       )
     )
@@ -120,7 +103,7 @@ with mlflow.start_run():
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #### Register model in the [MLflow Model Registry](https://docs.databricks.com/en/mlflow/model-registry.html)
+# MAGIC Register model in the [MLflow Model Registry](https://docs.databricks.com/en/mlflow/model-registry.html)
 # MAGIC
 # MAGIC We do this to help enable CI/CD and for ease of deployment in the next notebook.
 
@@ -141,7 +124,7 @@ client.transition_model_version_stage(
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #### Load model from Model Registry
+# MAGIC Load model from Model Registry
 
 # COMMAND ----------
 
@@ -150,8 +133,9 @@ model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}/Pr
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC #### Verify model from Registry is returning results as expected
-# MAGIC We test this on various queries
+# MAGIC Verify model from Registry is returning results as expected
+# MAGIC
+# MAGIC Test model on various queries
 
 # COMMAND ----------
 
@@ -215,3 +199,7 @@ filterdict={'Name':'ACETALDEHYDE'}
 search = {'question':['what are some properties of Acetaldehyde?'],'filter':[filterdict]}
 json = pd.DataFrame.from_dict(search).to_json(orient='split')
 print(json)
+
+# COMMAND ----------
+
+

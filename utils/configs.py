@@ -19,27 +19,46 @@
 # MAGIC   
 # MAGIC client.execute_post_json(f"{client.endpoint}/api/2.0/secrets/put", {
 # MAGIC   "scope": "solution-accelerator-cicd",
-# MAGIC   "key": "openai_api",
+# MAGIC   "key": "huggingface",
 # MAGIC   "string_value": '____' 
 # MAGIC })
 # MAGIC ```
 
 # COMMAND ----------
 
-import os
-os.environ['HUGGINGFACEHUB_API_TOKEN'] = dbutils.secrets.get('solution-accelerator-cicd', 'huggingface')    #mfg-llm-solution-accel2 #rkm-scope
-os.environ['HF_HOME'] = '/dbfs/temp/hfmfgcache'
+configs={}
 
 # COMMAND ----------
 
+# DBTITLE 1,Databricks url and token
+import os
+
+ctx = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
+configs['DATABRICKS_TOKEN'] = dbutils.secrets.get('solution-accelerator-cicd', 'mfg-sa-key') 
+configs['DATABRICKS_URL'] = ctx.apiUrl().getOrElse(None)
+
+# COMMAND ----------
+
+# DBTITLE 1,Huggingface token
+import os
+hftoken = dbutils.secrets.get('solution-accelerator-cicd', 'huggingface')    #mfg-llm-solution-accel2 #rkm-scope
+configs['HUGGINGFACEHUB_API_TOKEN'] =  hftoken
+os.environ['HUGGINGFACEHUB_API_TOKEN'] = hftoken
+os.environ['HF_HOME'] = '/dbfs/temp/hfmfgcache'
+
+
+# COMMAND ----------
+
+# DBTITLE 1,Llama token
 import subprocess
 subprocess.call('huggingface-cli login --token $HUGGINGFACEHUB_API_TOKEN', shell=True)
 
 # COMMAND ----------
 
-def dbfsnormalize(path):
-  path = path.replace('/dbfs/', 'dbfs:/')
-  return path
+# DBTITLE 1,OpenAI token
+openaitoken = dbutils.secrets.get('solution-accelerator-cicd', 'openai_api') 
+configs['OPENAI_API_KEY'] = openaitoken
+os.environ['OPENAI_API_KEY'] = openaitoken
 
 # COMMAND ----------
 
@@ -47,51 +66,51 @@ username = dbutils.notebook.entry_point.getDbutils().notebook().getContext().use
 
 # COMMAND ----------
 
-configs = {}
-configs.update({'vector_persist_dir' : '/dbfs/temp/faissv1'}) #/dbfs/temp/faissv1
-configs.update({'data_dir':f'/dbfs/Users/{username}/data/sds_pdf'})
-configs.update({'chunk_size':600})
-configs.update({'chunk_overlap':20})
 
-#configs.update({'temperature':0.8})
-#configs.update({'max_new_tokens':128})
-# configs.update({'prompt_template':"""Use the following pieces of context to answer the question at the end. If you don't know the answer, just say that you don't know, don't try to make up an answer.
+configs['source_catalog'] = "mfg_llm_cat"
+configs['source_schema'] = "mfg_llm_schema"
+configs['source_sds_table'] = "mfg_llm_sds"
 
-# {context}
+configs['vector_endpoint_name'] = "shared-demo-endpoint"
 
-# Question: {question}"""})
-
-configs.update({'prompt_template':"""Use the following pieces of information to answer the user's question.
-If you don't know the answer, just say that you don't know, don't try to make up an answer.
-
-Context: {context}
-Question: {question}
-
-Only return the helpful answer below and nothing else.
-Helpful answer:
-"""})
-
-configs.update({'num_similar_docs':10})
-configs.update({'registered_model_name':'mfg-llm-qabot'})
-configs.update({'HF_key_secret_scope':'solution-accelerator-cicd'})
-configs.update({'HF_key_secret_key':'huggingface'})
-configs.update({'serving_endpoint_name':'mfg-llm-qabot-serving-endpoint'})
+# Vector index
+configs['vector_index'] = "mfg_llm_solnaccel_index"
+configs['embedding_model_endpoint'] = "databricks-bge-large-en"
 
 
-#configs.update({'model_name' : 'togethercomputer/RedPajama-INCITE-Instruct-3B-v1'})
-#configs.update({'tokenizer_name' : 'togethercomputer/RedPajama-INCITE-Instruct-3B-v1'})
-#configs.update({'model_name' : 'gpt2-xl'})
-#configs.update({'tokenizer_name' : 'gpt2-xl'})
-#configs.update({'model_name' : 'google/flan-t5-xl'})
-#configs.update({'tokenizer_name' : 'google/flan-t5-xl'})
-# configs.update({'model_name' : 'bigscience/bloomz-7b1'})
-# configs.update({'tokenizer_name' : 'bigscience/bloomz-7b1'})
-# configs.update({'model_name' : 'mosaicml/mpt-7b-instruct'})
-# configs.update({'tokenizer_name' : 'EleutherAI/gpt-neox-20b'}) #for mpt
-#configs.update({'model_name' : 'tiiuae/falcon-7b-instruct'})
-#configs.update({'tokenizer_name' : 'tiiuae/falcon-7b-instruct'})
-configs.update({'model_name' : 'meta-llama/Llama-2-7b-chat-hf'})
-configs.update({'tokenizer_name' : 'meta-llama/Llama-2-7b-chat-hf'})
+configs['data_dir'] = f'/dbfs/Users/{username}/data/sds_pdf'
+configs['chunk_size']=600
+configs['chunk_overlap']=20
+
+configs['prompt_template'] = """Use the following pieces of information to answer the user's question.
+    If you don't know the answer, just say that you don't know, don't try to make up an answer.
+
+    Context: {context}
+    Question: {question}
+
+    Only return the helpful answer below and nothing else.
+    Helpful answer:
+    """
+
+configs['num_similar_docs']=10
+configs['registered_model_name'] = 'mfg-llm-qabot'
+configs['serving_endpoint_name'] = 'mfg-llm-qabot-serving-endpoint'
+
+
+#configs['model_name'] = 'togethercomputer/RedPajama-INCITE-Instruct-3B-v1'
+#configs['tokenizer_name'] = 'togethercomputer/RedPajama-INCITE-Instruct-3B-v1'
+#configs['model_name'] = 'gpt2-xl'
+#configs['tokenizer_name'] = 'gpt2-xl'
+#configs['model_name']= 'google/flan-t5-xl'
+#configs['tokenizer_name']= 'google/flan-t5-xl'
+# configs['model_name'] = 'bigscience/bloomz-7b1'
+# configs['tokenizer_name'] = 'bigscience/bloomz-7b1'
+# configs['model_name']='mosaicml/mpt-7b-instruct'
+# configs['tokenizer_name'] = 'EleutherAI/gpt-neox-20b' #for mpt
+#configs['model_name'] = 'tiiuae/falcon-7b-instruct'
+#configs['tokenizer_name']= 'tiiuae/falcon-7b-instruct'
+configs['model_name'] = 'meta-llama/Llama-2-7b-chat-hf'
+configs['tokenizer_name'] = 'meta-llama/Llama-2-7b-chat-hf'
 
 
 #torch_dtype=float16, #for gpu
@@ -99,26 +118,24 @@ configs.update({'tokenizer_name' : 'meta-llama/Llama-2-7b-chat-hf'})
 #load_in_8bit=True #, #8 bit stuff needs accelerate which I couldnt get to work with model serving
 #max_seq_len=1440 #rkm removed for redpajama
 
-import torch
-
 if 'falcon' in configs['model_name']:
   automodelconfigs = {
-      'trust_remote_code':True,
+      'trust_remote_code':'True',
       'device_map':'auto', 
-      'torch_dtype':torch.float16 #torch.float16 changed to bfloat for falcon. changed back to float for falcon
+      'torch_dtype':'torch.float16' #torch.float16 changed to bfloat for falcon. changed back to float for falcon
       }
 elif 'lama-2-' in configs['model_name']:
   automodelconfigs = {
-    'trust_remote_code':True,
+    'trust_remote_code':'True',
     'device_map':'auto', 
-    #'low_cpu_mem_usage':True,
-    'torch_dtype':torch.float16 #
+    #'low_cpu_mem_usage':'True',
+    'torch_dtype':'torch.float16'
     } 
 else:
   automodelconfigs = {
-      'trust_remote_code':True,
+      'trust_remote_code':'True',
       'device_map':'auto', 
-      'torch_dtype':torch.bfloat16
+      'torch_dtype':'torch.bfloat16'
       }
   
 
@@ -141,7 +158,7 @@ elif 'lama-2-' in configs['model_name']:
       'max_new_tokens':400,  # mex number of tokens to generate in the output
       'repetition_penalty':1.1, # without this output begins repeating
       #'max_length':128,
-      'return_full_text':True  # langchain expects the full text
+      'return_full_text':'True'  # langchain expects the full text
   }   
 else:
   pipelineconfigs = {
@@ -152,19 +169,9 @@ else:
       'max_new_tokens':128,  # mex number of tokens to generate in the output
       'repetition_penalty':1.1, # without this output begins repeating
       #'max_answer_len':100, #remove for red pajama & bloom & falcon
-      'return_full_text':True  # langchain expects the full text
+      'return_full_text':'True'  # langchain expects the full text
   }  
 
-
-# COMMAND ----------
-
-# DBTITLE 1,Databricks url and token
-import os
-ctx = dbutils.notebook.entry_point.getDbutils().notebook().getContext()
-configs['databricks token'] = ctx.apiToken().getOrElse(None)
-configs['databricks url'] = ctx.apiUrl().getOrElse(None)
-os.environ['DATABRICKS_TOKEN'] = configs["databricks token"]
-os.environ['DATABRICKS_URL'] = configs["databricks url"]
 
 # COMMAND ----------
 

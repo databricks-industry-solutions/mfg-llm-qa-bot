@@ -14,13 +14,20 @@
 # MAGIC </p>
 # MAGIC
 # MAGIC
-# MAGIC In this notebook, we will load these PDF documents, chunk the entire document into pieces and then create embeddings from this.  We will retrieve those documents along with metadata about them and feed that to a vector store which will create on index enabling fast document search and retrieval.
+# MAGIC In this notebook, we will load these PDF documents, chunk the entire document into pieces and then create embeddings from this.  We will retrieve those documents along with metadata about them and feed that to the Databricks vector store which will create on index enabling fast document search and retrieval.
 
 # COMMAND ----------
 
-# DBTITLE 1,Install required libraries
-# MAGIC %pip install -U PyPDF==3.9.1 pycryptodome==3.18.0 langchain==0.0.207 transformers==4.30.1 accelerate==0.20.3  einops==0.6.1 xformers==0.0.20 sentence-transformers==2.2.2 PyCryptodome==3.18.0 typing-inspect==0.8.0 typing_extensions==4.5.0 faiss-cpu==1.7.4 tiktoken==0.4.0
-# MAGIC dbutils.library.restartPython()
+# MAGIC %md 
+# MAGIC Install Libraries
+
+# COMMAND ----------
+
+# MAGIC %pip install --upgrade PyPDF==3.9.1 pycryptodome==3.18.0 langchain==0.1.6 transformers==4.37.2 databricks-vectorsearch==0.22 mlflow[databricks] xformers==0.0.24  accelerate==0.27.0
+
+# COMMAND ----------
+
+dbutils.library.restartPython()
 
 # COMMAND ----------
 
@@ -29,11 +36,35 @@
 
 # COMMAND ----------
 
-dbutils.fs.rm(dbfsnormalize(configs['vector_persist_dir']), True)
+from langchain.document_loaders import PyPDFLoader
+from langchain.embeddings import HuggingFaceEmbeddings
+from langchain import HuggingFaceHub
+from langchain.schema import Document
+from langchain.text_splitter import RecursiveCharacterTextSplitter
+import re
 
 # COMMAND ----------
 
-# DBTITLE 1,Define helper functions to extract metadata
+# MAGIC %md
+# MAGIC Create the catalogs and schemas for the data and index
+
+# COMMAND ----------
+
+spark.sql(f'create catalog if not exists {configs["source_catalog"]}')
+spark.sql(f'create schema if not exists {configs["source_catalog"]}.{configs["source_schema"]}')
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Helper routines for extracting metadata
+
+# COMMAND ----------
+
+def dbfsnormalize(path):
+  path = path.replace('/dbfs/', 'dbfs:/')
+  return path
+
+
 def extractMetadata(docstr):
   '''
   extracts the common name from the document
@@ -46,49 +77,30 @@ def extractMetadata(docstr):
       dict['Name']=matches.groups()[0].strip()
   return dict
 
+# COMMAND ----------
 
-def addMetadataElems(metadict, metadata_i):
-  '''add extracted metadata to the metadata collection'''
-  if 'Name' in metadict:
-    metadata_i['Name']=metadict['Name']
-  else:
-    metadata_i['Name']=''
-
-
+# MAGIC %md
+# MAGIC Use Spark to zip through the docs, read pdf, split pdf and extract metadata from pdf docs.
 
 # COMMAND ----------
 
-# DBTITLE 1,Create embeddings and store into a vector store (Faiss or ChromaDB)
-from langchain.document_loaders import PyPDFLoader
-from langchain.embeddings import HuggingFaceEmbeddings
-from langchain import HuggingFaceHub
-from langchain.schema import Document
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.vectorstores import FAISS
-import re
+from pyspark.sql.types import StructType, StructField, ArrayType, MapType, StringType
+from pyspark.sql.functions import explode, expr
 
-#Sentence embeddings. It maps sentences & paragraphs to a 384 dimensional dense vector space
-embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
+retschema = StructType([
+    StructField("chunks",ArrayType(StringType()), False),
+    StructField("metadata", MapType(StringType(), StringType()), False)
+])
 
-# vectordb path
-vectordb_path = configs['vector_persist_dir']
-#source data dir for pdfs
-data_dir = configs['data_dir']
-# make sure vectordb path is clear
-dbutils.fs.rm(dbfsnormalize(vectordb_path), recurse=True)
-
-pathlst = dbutils.fs.ls(dbfsnormalize(data_dir))
-display(pathlst)
-alldocslstloader=[]
-vectordb=None
-for idx, path1 in enumerate(pathlst):
-  if not str(path1.path).endswith('.pdf'):
-    continue
-  pdfurl = path1.path.replace(':', '')
+#use langchains pypdf loader
+@udf(returnType=retschema)
+def parseAndChunkPDF(pdfPath):
+  if not str(pdfPath).endswith('.pdf'):
+    return None, None
+  pdfurl = pdfPath.replace(':', '')
   pdfurl = '/' + pdfurl
   #use langchains pypdf loader
   loader = PyPDFLoader(pdfurl)
-  alldocslstloader.append(loader)
   #list of documents
   pdfdocs = loader.load()
   cleanpdfdocs = []
@@ -106,89 +118,244 @@ for idx, path1 in enumerate(pathlst):
   splitter = RecursiveCharacterTextSplitter(chunk_size=configs['chunk_size'], 
                                             chunk_overlap=configs['chunk_overlap'])
   texts = splitter.split_documents(cleanpdfdocs)
-  metadata_lst = []
-  ids_lst = []
+
   pages_lst=[]
 
   #add metadata to this block
-  for idx2, docs in enumerate(texts):
-    #add metadata
-    metadata_i = {'source': pdfurl, 'source_dbfs' : path1.path}
-    #add extracted metadata from doc
-    addMetadataElems(metadict, metadata_i)
-    metadata_lst.append(metadata_i)
-    #add unique id
-    ids_i = f'id-{idx2}-{idx+1}'
-    ids_lst.append(ids_i)
-    pages_lst.append(docs.page_content)
-  # define logic for embeddings storage
-  # For Chroma
-  # vectordb = Chroma.from_texts(
-  #   collection_name='mfg_collection',
-  #   texts=pages_lst, 
-  #   embedding=embeddings, 
-  #   metadatas=metadata_lst,
-  #   ids=ids_lst,
-  #   persist_directory=vectordb_path
-  #   )
-  # # persist vector db to storage
-  # vectordb.persist()
-  
-  #For FAISS
-  if vectordb is None: #first time
-    vectordb = FAISS.from_texts(pages_lst, embeddings, metadatas=metadata_lst, ids=ids_lst)
-  else: #subsequently add the docs, metadata and ids
-    vectordb.add_texts(texts=pages_lst, metadatas=metadata_lst, ids=ids_lst)
-vectordb.save_local(vectordb_path)
+  for idx2, splitdocs in enumerate(texts):
+    pages_lst.append(splitdocs.page_content)  
 
-# COMMAND ----------
-
-# DBTITLE 1,Test the vector store and print all ids stored in db
-# Load from Chroma
-# vectorstore = Chroma(collection_name='mfg_collection', 
-#        persist_directory=vectordb_path,
-#        embedding_function=embeddings)
-
-
-# Load from FAISS
-vectorstore = FAISS.load_local(vectordb_path, embeddings)
-for key,value in vectorstore.index_to_docstore_id.items():
-  print(key, value)
+  #return the chunked docs as a list along with the metadata for the pdf doc
+  metaname = metadict['Name'] if 'Name' in metadict else ''
+  metadata_i = {'Name':metaname}  
+  return pages_lst, metadata_i 
 
 
 # COMMAND ----------
 
-# DBTITLE 1,Demonstrate similarity search and show sources
-def similarity_search(question, filterdict, k=100):
-  #fetch_K - Number of Documents to fetch before filtering.
-  #filterdict restrict to that subset of docs with that metadata
-  matched_docs = vectorstore.similarity_search(question, k=k, filter=filterdict, fetch_k=100)
-  sources = []
-  content = []
-  for doc in matched_docs:
-    sources.append(
-        {
-            "page_content": doc.page_content,
-            "metadata": doc.metadata,
-        }
-    )
-    content.append(doc.page_content)
-    
-
-  return matched_docs, sources, content
-
-#test similarity search
-matched_docs, sources, content = similarity_search('What happens with acetaldehyde chemical exposure?', {'Name':'ACETALDEHYDE'}, 10)
-#print(content)
-print(sources)
+# MAGIC %md
+# MAGIC Use the UDF to parallelize the extract to Delta
 
 # COMMAND ----------
 
-#test similarity search
-matched_docs, sources, content = similarity_search('what happens if there are hazardous substances?', {'Name':'ACETONITRILE'})
-content
-sources
+
+pathlst = dbutils.fs.ls(dbfsnormalize(configs['data_dir']))
+df = spark.createDataFrame(pathlst)
+df = df.withColumn('chunks', parseAndChunkPDF(df.path))
+display(df)
+
+
 
 # COMMAND ----------
 
-matched_docs
+# MAGIC %md
+# MAGIC Explode chunks and metadata to their own row. Also add a guid column as a primary key column
+# MAGIC
+# MAGIC Requirements for Vector Search
+# MAGIC * Unity Catalog enabled workspace.
+# MAGIC * Serverless compute enabled.
+# MAGIC * Source table must have Change Data Feed enabled.
+# MAGIC * CREATE TABLE privileges on catalog schema(s) to create indexes.
+
+# COMMAND ----------
+
+df = df.select('path', 'name', df.chunks.chunks.alias('chunks'), df.chunks.metadata.alias('metadata'))
+df = df.select('path', 'name', explode(df.chunks).alias('chunks'), df.metadata.Name.alias('metadata_name')).withColumn('guid', expr("uuid()"))
+(df.write
+   .format('delta')
+   .mode('overwrite').option("overwriteSchema", "true")
+   .option("delta.enableChangeDataFeed", "true")
+   .saveAsTable(f'{configs["source_catalog"]}.{configs["source_schema"]}.{configs["source_sds_table"]}'))
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Check the table contents
+
+# COMMAND ----------
+
+df = spark.sql(f'select * from {configs["source_catalog"]}.{configs["source_schema"]}.{configs["source_sds_table"]}')
+display(df)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Create a Vector Search Client
+
+# COMMAND ----------
+
+from databricks.vector_search.client import VectorSearchClient
+#token and url set in environment var
+vsc = VectorSearchClient(workspace_url=configs["DATABRICKS_URL"], personal_access_token=configs['DATABRICKS_TOKEN'])
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Delete existing indexes and vector search endpoint (optional)
+
+# COMMAND ----------
+
+limap = vsc.list_indexes(configs['vector_endpoint_name'])
+liname = [True if li['name']==f"{configs['source_catalog']}.{configs['source_schema']}.{configs['vector_index']}" else False for li in limap.get('vector_indexes', [])]
+if any(liname):
+  vsc.delete_index(endpoint_name=configs['vector_endpoint_name'], index_name=f"{configs['source_catalog']}.{configs['source_schema']}.{configs['vector_index']}")
+lemap = vsc.list_endpoints()
+lename = [True if le['name']==configs['vector_endpoint_name'] else False for le in lemap.get('endpoints', [])]
+# disable if using a shared vector endpoint to avoid accidentally deleting it.
+# if any(lename):
+#   vsc.delete_endpoint(name=configs['vector_endpoint_name'])
+
+
+
+# COMMAND ----------
+
+#some time for the operations to complete
+import time
+time.sleep(5)
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC Create the endpoint
+
+# COMMAND ----------
+
+try:
+  vsc.create_endpoint(
+                name=configs['vector_endpoint_name'],
+                endpoint_type="STANDARD")
+except Exception as e:
+  print(e)
+
+# COMMAND ----------
+
+#some time for the operations to complete
+import time
+time.sleep(5)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Get the endpoint details
+
+# COMMAND ----------
+
+endpoint = vsc.get_endpoint(
+  name=configs['vector_endpoint_name'])
+endpoint
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC Create the Delta sync index
+# MAGIC use the guid as the primary key
+
+# COMMAND ----------
+
+index = vsc.create_delta_sync_index(
+    endpoint_name=configs['vector_endpoint_name'],
+    source_table_name=f"{configs['source_catalog']}.{configs['source_schema']}.{configs['source_sds_table']}",
+    index_name=f"{configs['source_catalog']}.{configs['source_schema']}.{configs['vector_index']}",
+    pipeline_type='TRIGGERED',
+    primary_key="guid",
+    embedding_source_column="chunks",
+    embedding_model_endpoint_name=configs['embedding_model_endpoint']
+  )
+
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Query the newly created index
+
+# COMMAND ----------
+
+index = vsc.get_index(endpoint_name=configs['vector_endpoint_name'], index_name=f"{configs['source_catalog']}.{configs['source_schema']}.{configs['vector_index']}")
+
+index.describe()
+
+# COMMAND ----------
+
+# MAGIC %md Check the status of the index and wait till it is **Online**
+
+# COMMAND ----------
+
+import time
+while not index.describe().get('status').get('detailed_state').startswith('ONLINE'):
+  print("Waiting for index to be ONLINE...")
+  time.sleep(15)
+print("Index is ONLINE")
+retindex = index.describe()
+retindex
+
+# COMMAND ----------
+
+time.sleep(10)
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Issue the command to trigger a sync
+
+# COMMAND ----------
+
+retindex = index.describe()
+if retindex['status']['detailed_state'] in 'ONLINE_NO_PENDING_UPDATE':
+  print('Syncing...')
+  retsync = index.sync()
+else:
+  print('Cannot Sync Status as ' + retindex['status']['detailed_state'])
+  print(retindex)
+
+
+# COMMAND ----------
+
+# returns [col1, col2, ...]
+# this can be set to any subset of the columns
+all_columns = spark.table(f"{configs['source_catalog']}.{configs['source_schema']}.{configs['source_sds_table']}").columns
+print(all_columns)
+results = index.similarity_search(
+  query_text="What happens with acetaldehyde chemical exposure?",
+  columns=all_columns,
+  num_results=10)
+
+results
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Sample query
+
+# COMMAND ----------
+
+results = index.similarity_search(
+  query_text="What happens with acetaldehyde chemical exposure?",
+  columns=all_columns,
+  filters = {"metadata_name": "ACETALDEHYDE"},
+  num_results=10 )
+
+results
+
+# COMMAND ----------
+
+results = index.similarity_search(
+  query_text="what happens if there are hazardous substances?",
+  columns=all_columns,
+  filters = {"metadata_name": "ACETONITRILE"},
+  num_results=10 )
+
+results
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Extract the response section 
+
+# COMMAND ----------
+
+results['result']['data_array'][2][2]
+
+# COMMAND ----------
+
+
