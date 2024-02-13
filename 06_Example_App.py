@@ -5,7 +5,7 @@
 
 # MAGIC %md ##Example Application
 # MAGIC
-# MAGIC This is an example application that you can leverage to make an api call to the model that's now hosted in Databricks model serving. This application can be hosted locally, on Huggingface Spaces, on a Databricks VM or any other VM that can run Python. For more info on gradio, visit https://www.gradio.app/guides/quickstart
+# MAGIC This is an example application that you can leverage to make an api call to the model that's now hosted in Databricks model serving. This application can be run from this notebook. For more info on gradio, visit https://www.gradio.app/guides/quickstart
 # MAGIC
 # MAGIC
 # MAGIC <p>
@@ -15,11 +15,41 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install gradio
+# MAGIC %md
+# MAGIC Tested on
+# MAGIC
+# MAGIC * Single Node Cluster i3.xlarge
+# MAGIC * 13.3 LTS
+
+# COMMAND ----------
+
+# MAGIC %pip uninstall --yes typing_extensions
+
+# COMMAND ----------
+
+# MAGIC %pip install gradio typing_extensions==4.9.0 mlflow
+
+# COMMAND ----------
+
+dbutils.library.restartPython()
 
 # COMMAND ----------
 
 # MAGIC %run ./utils/configs
+
+# COMMAND ----------
+
+os.environ['DATABRICKS_URL']=configs["DATABRICKS_URL"]
+os.environ['DATABRICKS_TOKEN']=configs["DATABRICKS_TOKEN"]
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC Running this will start the form right within this notebook.
+# MAGIC
+# MAGIC You can also see the public URL where you can run this from a browser
+# MAGIC
+# MAGIC ```Running on public URL: https://some_generated_url.gradio.live```
 
 # COMMAND ----------
 
@@ -65,25 +95,18 @@ def score_model(dataset):
     return response.json()
 
 
-def greet(question, filter):
+def callLLM(question, filter):
     filterdict={}
     if not filter.strip() == '':
         filterdict={'Name':f'{filter}'}
     dict = {'question':[f'{question}'], 'filter':[filterdict]}
     assemble_question = pd.DataFrame.from_dict(dict)
-
     data = score_model(assemble_question)
-
     answer = data["predictions"]["answer"]
     source = data["predictions"]["source"]
     source = source.replace(',', '\n')
     return [answer, source]
 
-def srcshowfn(chkbox):
-    
-    vis = True if chkbox==True else False
-    print(vis)
-    return gr.Textbox.update(visible=vis)
 
 with gr.Blocks( theme=gr.themes.Soft()) as demo:
     with gr.Row():
@@ -100,17 +123,24 @@ with gr.Blocks( theme=gr.themes.Soft()) as demo:
         inputfilter = gr.Textbox(placeholder="ACETONE", label="Filter (Optional)")
     with gr.Row():
         output = gr.Textbox(label="Prediction")
-        greet_btn = gr.Button("Respond", size="sm", scale=0).style(height=20)
+        callLLM_btn = gr.Button("Respond", size="sm", scale=0)
     with gr.Row():
-        srcshow = gr.Checkbox(value=False, label='Show sources')
-    with gr.Row():
-        outputsrc = gr.Textbox(label="Sources", visible=False)
+        outputsrc = gr.Textbox(label="Chunks from Sources", visible=True, lines=5, max_lines=10)
 
-    srcshow.change(srcshowfn, inputs=srcshow, outputs=outputsrc)
-    greet_btn.click(fn=greet, inputs=[input, inputfilter], outputs=[output, outputsrc], api_name="greet")
+    callLLM_btn.click(fn=callLLM, inputs=[input, inputfilter], outputs=[output, outputsrc], api_name="callLLM")
     
 demo.launch(share=True)  
 
+
+# COMMAND ----------
+
+# MAGIC %md 
+# MAGIC To terminate the running gradio process that hosts the web application
+
+# COMMAND ----------
+
+# MAGIC %sh
+# MAGIC ps -eaf | awk '/gradio/  {print $2}' | head -1 | xargs kill -9 
 
 # COMMAND ----------
 
