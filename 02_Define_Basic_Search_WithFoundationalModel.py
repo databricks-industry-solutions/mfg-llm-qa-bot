@@ -23,7 +23,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade langchain==0.1.6 databricks-vectorsearch==0.22 mlflow[databricks] langchainhub==0.1.14
+# MAGIC %pip install --upgrade langchain==0.1.6 SQLAlchemy==2.0.27 databricks-vectorsearch==0.22 mlflow[databricks] langchainhub==0.1.14 
 
 # COMMAND ----------
 
