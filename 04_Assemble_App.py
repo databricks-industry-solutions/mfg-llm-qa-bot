@@ -37,6 +37,7 @@ conda_env = mlflow.pyfunc.get_default_conda_env()
 
 packages = [
   f'langchain==0.1.6',
+  f'SQLAlchemy==2.0.27',
   f'databricks-vectorsearch==0.22',
   f'mlflow[databricks]',
   f'xformers==0.0.24',

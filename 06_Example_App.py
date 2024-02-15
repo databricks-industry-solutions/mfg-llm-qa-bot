@@ -135,7 +135,7 @@ demo.launch(share=True)
 # COMMAND ----------
 
 # MAGIC %md 
-# MAGIC To terminate the running gradio process that hosts the web application
+# MAGIC To terminate the running gradio process that hosts the web application. Comment this out if you are going to do a "Run All".
 
 # COMMAND ----------
 

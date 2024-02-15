@@ -32,7 +32,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade langchain==0.1.6 transformers==4.37.2 databricks-vectorsearch==0.22 mlflow[databricks] xformers==0.0.24  accelerate==0.27.0
+# MAGIC %pip install --upgrade langchain==0.1.6 SQLAlchemy==2.0.27 transformers==4.37.2 databricks-vectorsearch==0.22 mlflow[databricks] xformers==0.0.24  accelerate==0.27.0
 
 # COMMAND ----------
 
