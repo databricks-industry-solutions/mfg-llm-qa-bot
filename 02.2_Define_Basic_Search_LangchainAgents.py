@@ -117,8 +117,7 @@ mlflow_deploy_client = mlflow.deployments.get_deploy_client("databricks")
 
 try:
   openaikey = f"{{{{secrets/solution-accelerator-cicd/openai_api}}}}" #change to your key
-  print(openaikey)
-  print('1')
+
   mlflow_deploy_client.create_endpoint(
     name=f"{configs['serving_endpoint_name']}_rkm",
     config={
