@@ -32,7 +32,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade langchain==0.1.6 sqlalchemy==2.0.27 transformers==4.37.2 databricks-vectorsearch==0.22 mlflow[databricks] xformers==0.0.24  accelerate==0.27.0
+# MAGIC %pip install --upgrade langchain==0.1.6 sqlalchemy==2.0.27 transformers==4.37.2 databricks-vectorsearch==0.22 mlflow[databricks] xformers==0.0.24  accelerate==0.27.0 google-search-results wikipedia
 
 # COMMAND ----------
 
@@ -264,6 +264,10 @@ qa_chain = RetrievalQA.from_chain_type(llm=llm,
 
 # COMMAND ----------
 
+
+
+# COMMAND ----------
+
 # MAGIC %md Optionally dynamically pass a filter into the chain to pre-filter docs
 
 # COMMAND ----------
@@ -321,6 +325,109 @@ with torch.no_grad():
     torch.cuda.empty_cache()
 import gc
 gc.collect()
+
+# COMMAND ----------
+
+import os
+os.environ["SERPAPI_API_KEY"] = "0ced23b46c0376cae41078ea129e0b791c1d46d224a5e00b3aef19593e35567a"
+os.environ["OPENAI_API_KEY"] = "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"
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+
+
+# COMMAND ----------
+
+overall_chain({'query':'properties of acetone', 'input':'100'})
+
+# COMMAND ----------
+
+from langchain.agents import initialize_agent
+from langchain.agents import AgentType
+from langchain.agents import load_tools
+from langchain.llms import OpenAI
+
+llmai = OpenAI(temperature=0)
+tools = load_tools(["wikipedia"], llm=llm)
+
+agent = initialize_agent(tools,
+                         llmai,
+                         agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+                         verbose=False)
+
+out = agent({'input':"what are properties of acetone", 'metadata':'ACETONE'})
+print(f"{agent.agent.input_keys} {agent.agent.return_values}")
+print(out)
+
+
+# COMMAND ----------
+
+from langchain.chains import TransformChain
+
+def retrieval_transform(inputs: dict) -> dict:
+    docs = retriever.get_relevant_documents(query=inputs["input"])
+    docsc = [d.page_content for d in docs if inputs['metadata'] in d.metadata['metadata_name']]
+    combineddocs = "\n---\n".join(docsc) + "\n--\n" + inputs['output']
+    docs_dict = {
+        "query": inputs["input"],
+        "contexts":  combineddocs
+    }
+    return docs_dict
+
+retrieval_chain = TransformChain(
+    input_variables=["input", "output", "metadata"], #output from wiki chain
+    output_variables=["query", "contexts"],
+    transform=retrieval_transform
+)
+
+print(f"{retrieval_chain.input_keys}-{retrieval_chain.output_keys}")
+
+
+out = retrieval_chain({'input':'whats the color of acetone?', 'output':'blahblahblah', 'metadata':'ACETONE'})
+print(out)
+
+# COMMAND ----------
+
+tempstr = """Use the following pieces of information to answer the user's question.
+    If you don't know the answer, just say that you don't know, don't try to make up an answer.
+
+    Context: {contexts}
+    Question: {query}
+
+    Only return the helpful answer below and nothing else.
+    Helpful answer:
+    """
+
+# COMMAND ----------
+
+promptTemplate = PromptTemplate(
+        template=tempstr, input_variables=["contexts", "query"])
+
+# COMMAND ----------
+
+from langchain.chains import LLMChain
+qa_chain = LLMChain(llm=llm, prompt=promptTemplate )
+out = qa_chain({'question':'what are the properties of acetone', 'context':'Right to Know  Hazardous Substance Fact Sheet       Common Name:  ACETONE  Synonyms:  Dimethyl Ketone  Chemical Name:  2 -Propanone  Date:  February 2011         Revision:  June 2015  CAS Number:  67-64-1 RTK Substance Number:  0006  DOT Number:  UN 1090   Description and Use  Acetone  is a clear, colorles s liquid with a sweet odor.  It is used as a solvent for fats, oils, waxes, resins, plastics, and varnishes, for making other chemicals, and in nail polish remover.    ODOR THRESHOLD = 13 to 62 ppm   Odor thresholds vary greatly.  Do not rely on odor alone to determine potentially hazardous\n---\nCommon Name:  ACETONE  Synonyms:  Dimethyl Ketone; 2 -Propanone  CAS No:  67 -64-1 Molecular Formula:  C3H6O RTK Substance No:  0006  Descrip tion:  Clear, colorless liquid with a sweet odor  HAZARD DATA  Hazard Rating  Firefighting   Reactivity  1 - Health  3 - Fire 0 - Reactivity  DOT#:  UN 1090  ERG Guide #:  127 Hazard Class:  3              (Flammable)  FLAMMABLE LIQUID.  Use dry chemical, CO 2, water spray or alcohol -  resistant foam as extinguishing agents.  Water may not be effective in fighting fires.  POISONOUS GASES ARE PRODUCED IN FIRE.  CONTAINERS MAY EXPLODE IN FIRE.  Use\n---\nPeroxide  is an Organic Peroxide  and is a DANGEROUS FIRE and EXPLOSION HAZARD when exposed to HEAT, SPARKS, FLAME or CONTAMINATION.  IDENTIFICATION Acetyl Acetone Peroxide  is a colorless to light yellow liquid with a sharp smell.  Because Acetyl Acetone Peroxide  is an Organic Peroxide , it is often shipped or used in a solution or as a paste.  It is used as a catalyst to make resins, vinyl, polyolefins, and silicons.  REASON FOR CITATION * Acetyl Acetone Peroxide  is on the Hazardous Substance List because it is cited by DOT. * Definitions are provided on page 5.  HOW TO DETERMINE IF YOU\n---\nexplosive peroxides . Acet one attacks PLASTICS.   SPILL/LEAKS   PHYSICAL PROPERTIES  Isolation Distance:   Spill:  50 meters (150 feet)  Fire:  800 meters (1/2 mile)  Absorb liquids in dry sand, earth, or a similar material   and place into sealed containers for disposal.  Use only non -sparking tools and equipment.  Metal containers involving the transfer of Acetone    should be grounded and bonded.  Keep Acetone  out of confined spaces, such as   sewers, because of the possibility of an explosion.  DO NOT wash into sewer as Acetone  is dange rous to   aquatic life in high concentrations.\n---\nhazardous exposures.    Reasons for Citation   Acetone  is on the Right to Know Hazardous Substance List because it is cited by OSHA, ACGIH, DOT, NIOSH, NFPA and EPA.   This chemical is on the Special Health Hazard Substance List.         SEE GLOSSARY ON PAGE 5.  FIRST AID  Eye Contact   Immediately flush with large amounts of water for at least 15 minutes, lifting upper and lower lids.  Remove contact lenses, if worn, while rinsing.   Skin Contact   Quickly remove contaminated clothing.  Immedi ately wash contaminated skin with large amounts of soap and water.   Inhalation   Remove the\n---\nHazard Rating Key: 0=minimal; 1=slight; 2=moderate; 3=serious; 4=severe    Acetone  can affect you when inhaled and may be absorbed throug h the skin.   Acetone  can cause skin irritation. Prolonged or repeated exposure can cause drying and cracking of the skin with redness.   Exposure can irritate the eyes, nose and throat.   Exposure to high concentrations can cause headache, nausea and vomiting, dizziness, lightheadedness and even passing out.    Acetone  may affect the kidneys and liver.   Acetone  is a FLAMMABLE LIQUID and a DANGEROUS FIRE HAZARD.    Workplace Exposure Limits  OSHA:\n---\nto form explosive peroxides .  Store in tightly closed containers in a cool, well -ventilated area.   Acetone  attacks PLASTICS.   Sources of ignition, such as smoking and open flames, are prohibited where Acetone  is used, handled, or stored.   Metal containers involving the transfer of Aceto ne should be grounded and bonded.   Use explosion -proof electrical equipment and fittings wherever Acetone  is used, handled, manufactured, or stored.   Use only non -sparking tools and equipment, especially when opening and closing containers of Acetone .                 Occupational Health\n--\n'})
+print(out)
+
+# COMMAND ----------
+
+from langchain.chains import SequentialChain
+from langchain.memory import SimpleMemory
+overall_chain = SequentialChain(
+                input_variables=['input', 'metadata'],
+                #memory=SimpleMemory(memories={"budget": "100 GBP"}),
+                chains=[agent, retrieval_chain, qa_chain],
+                verbose=True)
+overall_chain({'input':'what are the properties of Acetone?', 'metadata':'ACETONE'})
 
 # COMMAND ----------
 

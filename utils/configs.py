@@ -88,7 +88,7 @@ configs['prompt_template'] = """Use the following pieces of information to answe
     Context: {context}
     Question: {question}
 
-    Only return the helpful answer below and nothing else.
+    Return as much information as possible
     Helpful answer:
     """
 
