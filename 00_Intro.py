@@ -47,6 +47,12 @@ print(configs)
 
 # COMMAND ----------
 
+def dbfsnormalize(path):
+  path = path.replace('/dbfs/', 'dbfs:/')
+  return path
+
+# COMMAND ----------
+
 # DBTITLE 1,Set up local copy of source data
 dbutils.fs.cp("s3a://db-gtm-industry-solutions/data/MFG/llm_qa/sds_pdf", dbfsnormalize(configs["data_dir"]), True)
 
