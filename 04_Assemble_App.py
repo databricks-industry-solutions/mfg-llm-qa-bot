@@ -137,6 +137,8 @@ model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}/Pr
 # MAGIC Verify model from Registry is returning results as expected
 # MAGIC
 # MAGIC Test model on various queries
+# MAGIC
+# MAGIC If you see CUDA out of memory errors at this step, restart the compute and try again. This occurs due to leftover processes from running other notebooks.
 
 # COMMAND ----------
 

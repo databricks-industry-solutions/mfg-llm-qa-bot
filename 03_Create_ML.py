@@ -5,7 +5,7 @@
 
 # MAGIC %md ##Create ML
 # MAGIC
-# MAGIC In this notebook, we create a custom MLflow pyfunc wrapper to store our langchain model in MLflow. We do this to follow MLOps best practices and simplify the deployment of our application
+# MAGIC In this notebook, we create a custom MLflow pyfunc wrapper to store our langchain model in MLflow. We do this to follow MLOps best practices and simplify the deployment of our application. This continues from notebook 02.0_Define_Basic_Search
 # MAGIC
 # MAGIC
 # MAGIC <p>

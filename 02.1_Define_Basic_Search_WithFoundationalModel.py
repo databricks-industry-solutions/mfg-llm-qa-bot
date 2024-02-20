@@ -5,7 +5,7 @@
 
 # MAGIC %md ##Define Basic Search
 # MAGIC
-# MAGIC This is an alternate (easier) way of building a RAG model using a Foundational model instead of a custom model.
+# MAGIC This is an alternate (easier) way of building a RAG model using a [Foundational model](https://docs.databricks.com/en/machine-learning/foundation-models/index.html) instead of a custom model.
 # MAGIC
 # MAGIC
 # MAGIC <p>
@@ -114,27 +114,27 @@ print(f"Relevant documents: {similar_documents}")
 import mlflow.deployments
 from mlflow.deployments import get_deploy_client
 
-# MLFLow Deployments
 mlflow_deploy_client = mlflow.deployments.get_deploy_client("databricks")
 
 try:
-    mlflow_deploy_client.create_endpoint(
-        name=f"{configs['serving_endpoint_name']}_rkm",
-        config={
-            "served_entities": [{
-                "external_model": {
-                    "name": "gpt-3.5-turbo-instruct",
-                    "provider": "openai",
-                    "task": "llm/v1/completions",
-                    "openai_config": {
-                        "openai_api_key": "{{secrets/fieldeng/nabe_openai}}"
-                    }
-                }
-        }]
-        }
-    )
+  openaikey = f"{{{{secrets/solution-accelerator-cicd/openai_api}}}}" #change to your key
+  mlflow_deploy_client.create_endpoint(
+    name=f"{configs['serving_endpoint_name']}_rkm",
+    config={
+      "served_entities": [{
+          "external_model": {
+              "name": "gpt-3.5-turbo-instruct",
+              "provider": "openai",
+              "task": "llm/v1/completions",
+              "openai_config": {
+                  "openai_api_key": openaikey
+              }
+          }
+      }]
+    }
+  )
 except Exception as e:
-    print(e)
+  print(e)
 
 # COMMAND ----------
 
@@ -156,7 +156,7 @@ print(completions_response)
 
 # COMMAND ----------
 
-llm = Databricks(endpoint_name=f"{configs['serving_endpoint_name']}_rkm", extra_params={"temperature": 0.1, "max_tokens": 500})
+llm = Databricks(endpoint_name=f"{configs['serving_endpoint_name']}_rkm", extra_params={"temperature": 0.1, "max_tokens": 1000})
 
 # COMMAND ----------
 
@@ -165,11 +165,15 @@ llm.invoke('How is ph level calculated')
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC Foundational model
+# MAGIC You can also directly call a [Foundational model](https://www.databricks.com/blog/build-genai-apps-faster-new-foundation-model-capabilities)
 
 # COMMAND ----------
 
 llm = Databricks(endpoint_name=f"databricks-mpt-7b-instruct", extra_params={"temperature": 0.1, "max_tokens": 500})
+
+# COMMAND ----------
+
+# MAGIC %md Test the endpoint
 
 # COMMAND ----------
 
@@ -184,7 +188,7 @@ llm.invoke('How is ph level calculated')
 
 promptTemplate = PromptTemplate(
         template=configs['prompt_template'], input_variables=["context", "question"])
-chain_type_kwargs = {"prompt":promptTemplate, "verbose":True} #change to verbose true for printing out entire prompt 
+chain_type_kwargs = {"prompt":promptTemplate, "verbose":False} #change to verbose true for printing out entire prompt 
 
 
 
