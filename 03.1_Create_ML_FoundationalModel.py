@@ -5,7 +5,7 @@
 
 # MAGIC %md ##Create ML
 # MAGIC
-# MAGIC In this notebook, we create a custom MLflow pyfunc wrapper to store our langchain model in MLflow. We do this to follow MLOps best practices and simplify the deployment of our application. This continues from notebook 02.0_Define_Basic_Search
+# MAGIC In this notebook, we create a custom MLflow pyfunc wrapper which loads a Databricks foundational model in MLflow. This continues from notebook 02.1 We do this to follow MLOps best practices and simplify the deployment of our application. 
 # MAGIC
 # MAGIC
 # MAGIC <p>
@@ -13,17 +13,8 @@
 # MAGIC </p>
 # MAGIC
 # MAGIC This notebook was tested on the following infrastructure:
-# MAGIC * DBR 13.3ML (GPU)
-# MAGIC * g5.2xlarge (AWS) - however comparable infra on Azure should work (A10s)
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC CUDA [memory management flag](https://pytorch.org/docs/stable/notes/cuda.html#environment-variables)
-
-# COMMAND ----------
-
-# MAGIC %sh export 'PYTORCH_CUDA_ALLOC_CONF=max_split_size_mb:512'
+# MAGIC * DBR 13.3ML
+# MAGIC * i3.xlarge (AWS) GPU not needed
 
 # COMMAND ----------
 
@@ -32,7 +23,7 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade langchain==0.1.6 SQLAlchemy==2.0.27 transformers==4.37.2 databricks-vectorsearch==0.22 mlflow[databricks] xformers==0.0.24  accelerate==0.27.0
+# MAGIC %pip install --upgrade langchain==0.1.6 SQLAlchemy==2.0.27 transformers==4.37.2 databricks-vectorsearch==0.22 mlflow[databricks]
 
 # COMMAND ----------
 
@@ -44,22 +35,14 @@ dbutils.library.restartPython()
 
 # COMMAND ----------
 
-from langchain.embeddings import HuggingFaceEmbeddings
+
 from langchain.prompts import PromptTemplate
-from torch import cuda, bfloat16,float16
-import transformers
-from langchain import HuggingFacePipeline
-from transformers import AutoTokenizer, pipeline
 from langchain.chains import RetrievalQA
 from databricks.vector_search.client import VectorSearchClient
 from langchain.vectorstores import DatabricksVectorSearch
-from langchain.embeddings import DatabricksEmbeddings
-from mlflow.pyfunc import PythonModelContext
-from utils.stoptoken import StopOnTokens
-import json
-import torch
-import gc
+from langchain.llms import Databricks
 
+import json
 import logging
 import sys
 
@@ -89,15 +72,6 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
   def __init__(self):
     pass
   
-  def _reconvertVals(self, autoconfig):
-    ''' Convert string values in config to the right types'''
-    for key in autoconfig:
-      if key in ['trust_remote_code', 'return_full_text', 'low_cpu_mem_usage'] and autoconfig[key] is not None:
-        autoconfig[key] = bool(autoconfig[key])
-      if key in 'torch_dtype' and isinstance(autoconfig['torch_dtype'], str) and autoconfig['torch_dtype'] in 'torch.bfloat16':
-        autoconfig['torch_dtype'] = torch.bfloat16
-      if key in 'torch_dtype' and isinstance(autoconfig['torch_dtype'], str) and autoconfig['torch_dtype'] in 'torch.float16':
-        autoconfig['torch_dtype'] = torch.float16
 
   def _get_retriever(self):
     '''Get the langchain vector retriever from the Databricks object '''
@@ -122,68 +96,13 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
   def _load_model(self):
     logger = logging.getLogger('mlflow.store')
     try:
-      device = f'cuda:{cuda.current_device()}' if cuda.is_available() else 'cpu'
-      logger.info(device)
-      self._reconvertVals(self._automodelconfigs)
-      self._reconvertVals(self._pipelineconfigs)
-      print(f"{self._configs['model_name']} using configurations {self._automodelconfigs}")
-      #account for small variations in code for loading models between models
-      if 'mpt' in self._configs['model_name']:
-        modconfig = transformers.AutoConfig.from_pretrained(self._configs['model_name'] ,
-          trust_remote_code=True
-        )
-        #modconfig.attn_config['attn_impl'] = 'triton'
-        model = transformers.AutoModelForCausalLM.from_pretrained(
-            self._configs['model_name'],
-            config=modconfig,
-            **self._automodelconfigs
-        )
-      elif 'flan' in self._configs['model_name']:
-        model = transformers.AutoModelForSeq2SeqLM.from_pretrained(
-            self._configs['model_name'],
-            **self._automodelconfigs
-        )
-      else:
-        model = transformers.AutoModelForCausalLM.from_pretrained(
-            self._configs['model_name'],
-            **self._automodelconfigs
-        )
-
-      #  model.to(device) -> `.to` is not supported for `4-bit` or `8-bit` models.
-      listmc = self._automodelconfigs.keys()
-      # if 'load_in_4bit' not in listmc and 'load_in_8bit' not in listmc:
-      #   model.eval()
-      #   model.to(device)   
-      if 'RedPajama' in self._configs['model_name']:
-        model.tie_weights()
-
-      tokenizer = transformers.AutoTokenizer.from_pretrained(self._configs['tokenizer_name'])
-
-      if 'load_in_4bit' not in listmc and 'load_in_8bit' not in listmc:
-        generate_text = transformers.pipeline(
-            model=model, tokenizer=tokenizer,
-            #device=device, #latest accelerate lib doesnt like this.
-            pad_token_id=tokenizer.eos_token_id,
-            #stopping_criteria=stopping_criteria,
-            **self._pipelineconfigs
-        )
-      else:
-        generate_text = transformers.pipeline(
-            model=model, tokenizer=tokenizer,
-            pad_token_id=tokenizer.eos_token_id,
-            #stopping_criteria=stopping_criteria,
-            **self._pipelineconfigs
-        )    
-      logger.info('Creating HF Pipeline')
-      llm = HuggingFacePipeline(pipeline=generate_text)
+      #load our databricks foundational model
+      llm = Databricks(endpoint_name=f"databricks-mpt-7b-instruct", extra_params={"temperature": 0.1, "max_tokens": 1000})
       return llm
 
     except Exception as e:
       logger.info("ErrorDel")
       logger.info(e)
-      _qa_chain=None
-      gc.collect()
-      torch.cuda.empty_cache()  
     
 
   def load_context(self, context):
@@ -191,18 +110,12 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
     Args:
         context: MLflow context where the model artifact is stored.
     """
-
     logger = logging.getLogger('mlflow.store')
     logger.setLevel(logging.INFO)
     #this is passed in  
-
-    logger.info('-1-')
     modconfig = context.model_config
     logger.info('incoming model config ' + str(modconfig))
     self._configs = json.loads(modconfig['configs'])
-    self._automodelconfigs = json.loads(modconfig['automodelconfigs'].replace("\'", "\""))
-    self._pipelineconfigs = json.loads(modconfig['pipelineconfigs'].replace("\'", "\""))
-    os.environ['HUGGINGFACEHUB_API_TOKEN'] = self._configs["HUGGINGFACEHUB_API_TOKEN"]
     os.environ['DATABRICKS_HOST']=self._configs['DATABRICKS_URL']
     os.environ['DATABRICKS_TOKEN']=self._configs['DATABRICKS_TOKEN']
     logger.info('-2-')
@@ -213,12 +126,6 @@ class MLflowMfgBot(mlflow.pyfunc.PythonModel):
     self._retriever = retr
     self._qa_chain = None
     logger.info('-3-')
-    #have to do a bit of extra initialization with llama-2 models since its by invitation only
-    if 'lama-2-' in self._configs['model_name']:
-      import subprocess
-      retval = subprocess.call(f'huggingface-cli login --token {self._configs["HUGGINGFACEHUB_API_TOKEN"] }', shell=True)
-      logger.info(f"{self._configs['model_name']} limited auth is complete-{retval}")    
-    logger.info('-4-')
     llm = self._load_model()
     if llm is None:
       logger.info('cannot load context because model was not loaded')

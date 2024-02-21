@@ -43,7 +43,7 @@ from databricks.vector_search.client import VectorSearchClient
 from langchain.vectorstores import DatabricksVectorSearch
 
 from langchain.llms import Databricks
-import gc
+
 
 # COMMAND ----------
 
