@@ -7,7 +7,7 @@
 # MAGIC
 # MAGIC In this notebook, we will deploy the custom model registered with MLflow in the prior notebook and deploy it to Databricks model serving ([AWS](https://docs.databricks.com/machine-learning/model-serving/index.html)|[Azure](https://learn.microsoft.com/en-us/azure/databricks/machine-learning/model-serving/)).  Databricks model serving provides containerized deployment options for registered models thought which authenticated applications can interact with the model via a REST API.  This provides MLOps teams an easy way to deploy, manage and integrate their models with various applications.
 # MAGIC
-# MAGIC This notebook relies on GPU model serving, which is currently in private preview. Please reach out to your Databricks account team if you would like to inquire about the private preview.
+# MAGIC This notebook relies on GPU model serving which works in [limited regions](https://docs.databricks.com/en/machine-learning/model-serving/model-serving-limits.html)
 
 # COMMAND ----------
 

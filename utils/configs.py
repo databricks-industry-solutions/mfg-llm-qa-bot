@@ -49,6 +49,11 @@ os.environ['HF_HOME'] = '/dbfs/temp/hfmfgcache'
 
 # COMMAND ----------
 
+# MAGIC %md
+# MAGIC Llama 2 needs [additional licensing](https://huggingface.co/meta-llama) 
+
+# COMMAND ----------
+
 # DBTITLE 1,Llama token
 import subprocess
 subprocess.call('huggingface-cli login --token $HUGGINGFACEHUB_API_TOKEN', shell=True)

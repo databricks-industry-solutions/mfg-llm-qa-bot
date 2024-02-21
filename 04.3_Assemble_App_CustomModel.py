@@ -5,7 +5,7 @@
 
 # MAGIC %md ##Assemble App
 # MAGIC
-# MAGIC In this notebook, we call the custom MLflow pyfunc wrapper that we created in the previous notebook. We then load in the vectorstore as a retriever and pass the required environment configuration. We then persist the model to MLflow and make the required MLflow API call to register this model in the model registry.
+# MAGIC In this notebook, we call the custom MLflow pyfunc wrapper which loads an open source model that we created in the notebook 03.3. In this notebook, we assemble the custom MLflow pyfunc wrapper and store it in the MLFlow Model registry. We persist the model to MLflow and make the required MLflow API call to register this model in the model registry. We change the stage of the model to Production.
 # MAGIC
 # MAGIC <p>
 # MAGIC     <img src="https://github.com/databricks-industry-solutions/mfg-llm-qa-bot/raw/main/images/MLflow-RAG.png" width="700" />
@@ -22,7 +22,7 @@
 
 # COMMAND ----------
 
-# MAGIC %run ./03_Create_ML
+# MAGIC %run ./03.3_Create_ML_CustomModel
 
 # COMMAND ----------
 
@@ -96,7 +96,8 @@ with mlflow.start_run():
       artifact_path='mfgmodel',
       model_config={"configs":json.dumps(configs),
                  "automodelconfigs":str(automodelconfigs),
-                 "pipelineconfigs":str(pipelineconfigs)},
+                 "pipelineconfigs":str(pipelineconfigs)
+                 },
       registered_model_name=configs['registered_model_name']
       )
     )

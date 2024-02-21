@@ -50,8 +50,14 @@ import re
 
 # COMMAND ----------
 
-spark.sql(f'create catalog if not exists {configs["source_catalog"]}')
-spark.sql(f'create schema if not exists {configs["source_catalog"]}.{configs["source_schema"]}')
+# Need UC permissions to check or create a catalog/schema
+# if you dont have create permission then you cant check 'if not exists' either
+lstcatalog = spark.catalog.listCatalogs()
+if configs["source_catalog"] in lstcatalog: #catalog exists so skip
+  pass
+else:
+  spark.sql(f'create catalog if not exists {configs["source_catalog"]}')
+  spark.sql(f'create schema if not exists {configs["source_catalog"]}.{configs["source_schema"]}')
 
 # COMMAND ----------
 
