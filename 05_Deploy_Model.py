@@ -43,7 +43,7 @@ from mlflow.utils.databricks_utils import get_databricks_host_creds
 
 client = mlflow.MlflowClient()
 #get the latest version of the registered model in MLFlow
-latest_version = client.get_latest_versions(configs['registered_model_name'], stages=['Production'])[0].version
+latest_version = client.get_model_version_by_alias(configs['registered_model_name'], 'champion').version
 print(latest_version)
 # # gather other inputs the API needs
 serving_host = spark.conf.get("spark.databricks.workspaceUrl")
@@ -61,6 +61,11 @@ os.environ['DATABRICKS_TOKEN']=creds.token
 # MAGIC Models may typically be deployed to model sharing endpoints using either the Databricks workspace user-interface or a REST API.  Because our model depends on the deployment of a sensitive environment variable, we will need to leverage a relatively new model serving feature that is currently only available via the REST API.
 # MAGIC
 # MAGIC See our served model config below and notice the `env_vars` part of the served model config - you can now store a key in a secret scope and pass it to the model serving endpoint as an environment variable.
+# MAGIC
+# MAGIC **Use GPU_MEDIUM for custom models**
+# MAGIC
+# MAGIC **Use CPU for foundational/external models**
+# MAGIC
 
 # COMMAND ----------
 
@@ -73,7 +78,7 @@ served_models = [
     "served_models": [{
       "model_name": configs['registered_model_name'],
       "model_version": latest_version,
-      "workload_type": "GPU_MEDIUM",
+      "workload_type": "CPU", #use GPU_MEDIUM for custom models. use CPU for foundational/external model
       "workload_size": "Small",
       "scale_to_zero_enabled": 'false',
       "environment_vars":{

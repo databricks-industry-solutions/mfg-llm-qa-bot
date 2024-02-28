@@ -41,7 +41,7 @@ configs['DATABRICKS_URL'] = ctx.apiUrl().getOrElse(None)
 
 # DBTITLE 1,Huggingface token
 import os
-hftoken = dbutils.secrets.get('solution-accelerator-cicd', 'huggingface')    #mfg-llm-solution-accel2 #rkm-scope
+hftoken = dbutils.secrets.get('solution-accelerator-cicd', 'huggingface')   
 configs['HUGGINGFACEHUB_API_TOKEN'] =  hftoken
 os.environ['HUGGINGFACEHUB_API_TOKEN'] = hftoken
 os.environ['HF_HOME'] = '/dbfs/temp/hfmfgcache'
@@ -61,7 +61,13 @@ subprocess.call('huggingface-cli login --token $HUGGINGFACEHUB_API_TOKEN', shell
 # COMMAND ----------
 
 # DBTITLE 1,OpenAI token
-openaitoken = dbutils.secrets.get('solution-accelerator-cicd', 'openai_api') 
+#needed for notebook 2.2 only
+try:
+  openaitoken = dbutils.secrets.get('solution-accelerator-cicd', 'openai_api') 
+except Exception as e:
+  print('No OpenAPI token detected')
+  openaitoken=''
+
 configs['OPENAI_API_KEY'] = openaitoken
 os.environ['OPENAI_API_KEY'] = openaitoken
 
@@ -98,7 +104,7 @@ configs['prompt_template'] = """Use the following pieces of information to answe
     """
 
 configs['num_similar_docs']=10
-configs['registered_model_name'] = 'mfg-llm-qabot'
+configs['registered_model_name'] = f"{configs['source_catalog']}.{configs['source_schema']}.mfg-llm-qabot"
 configs['serving_endpoint_name'] = 'mfg-llm-qabot-serving-endpoint'
 
 
