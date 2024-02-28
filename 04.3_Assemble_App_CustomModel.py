@@ -76,7 +76,31 @@ mfgsdsbot = MLflowMfgBot()
 # mfgsdsbot.load_context(context)
 # # get response to question
 # filterdict={'Name':'ACETONE'}
-# mfgsdsbot.predict(context, {'questions':['when should OSHA get involved on acetone exposure?'], 'search_kwargs':{"k": 10, "filter":filterdict, "fetch_k":100}})
+# question = {'questions':['what are some properties of Acetaldehyde?'],'filter':[filterdict]}
+# preds = mfgsdsbot.predict(context, question)
+# print(preds)
+
+# COMMAND ----------
+
+
+from mlflow.models import infer_signature
+import pandas as pd
+
+filterdict={}
+question = {'questions':['what are some properties of Acetaldehyde?'],'filter':[filterdict]}
+
+preds = {'query': 'what are some properties of Acetaldehyde?', 'result': 'Clear, colorless liquid or gas, reacts with air, reacts with strong acids, reacts with strong bases, reacts with amines and ketones, reacts with oxidizing agents, isolates in liquid form for up to 150 feet or in a fire for up to half a mile', 'source_documents': ['doc1','doc2']}
+
+signature = infer_signature(pd.DataFrame.from_dict(question), preds)
+
+#convert required fields to false
+signlisti = signature.to_dict()['inputs']
+print(signlisti)
+signlisti = signlisti.replace('"required": true', '"required": false')
+signlisto = signature.to_dict()['outputs']
+signlisto = signlisto.replace('"required": true', '"required": false')
+signature = signature.from_dict({"inputs":signlisti, "outputs":signlisto})
+print(signature.to_dict())
 
 # COMMAND ----------
 
@@ -98,7 +122,8 @@ with mlflow.start_run():
                  "automodelconfigs":str(automodelconfigs),
                  "pipelineconfigs":str(pipelineconfigs)
                  },
-      registered_model_name=configs['registered_model_name']
+      registered_model_name=configs['registered_model_name'],
+      signature = signature
       )
     )
 
@@ -112,16 +137,10 @@ with mlflow.start_run():
 # COMMAND ----------
 
 client = mlflow.MlflowClient()
-
-latest_version = client.get_latest_versions(configs['registered_model_name'], stages=['None'])[0].version
-print(latest_version)
-#transition model to production
-client.transition_model_version_stage(
-    name=configs['registered_model_name'],
-    version=latest_version,
-    stage='Production',
-    archive_existing_versions=True
-)
+v = client.search_model_versions(f"name=\'{configs['registered_model_name']}\'", max_results=1000)
+version = max([ver.version for ver in v])
+print(version)
+client.set_registered_model_alias(configs['registered_model_name'], "champion", version)
 
 # COMMAND ----------
 
@@ -130,7 +149,7 @@ client.transition_model_version_stage(
 
 # COMMAND ----------
 
-model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}/Production")
+model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}@champion")
 
 # COMMAND ----------
 
@@ -146,7 +165,7 @@ model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}/Pr
 import pandas as pd
 # construct search
 filterdict={'Name':'ACETONE'}
-search = {'question':['what are some properties of Acetone?'],'filter':[filterdict]}
+search = {'questions':['what are some properties of Acetone?'],'filter':[filterdict]}
 
 # call model
 y = model.predict(pd.DataFrame.from_dict(search))
@@ -155,7 +174,7 @@ print(y)
 # COMMAND ----------
 
 filterdict={'Name':'ACETALDEHYDE'}
-search = {'question':['what are some properties of Acetaldehyde?'],'filter':[filterdict]}
+search = {'questions':['what are some properties of Acetaldehyde?'],'filter':[filterdict]}
 
 y=model.predict(pd.DataFrame.from_dict(search))
 print(y)
@@ -163,7 +182,7 @@ print(y)
 # COMMAND ----------
 
 filterdict={}
-search = {'question':['When is medical attention needed?'],'filter':[filterdict]}
+search = {'questions':['When is medical attention needed?'],'filter':[filterdict]}
 y = model.predict(pd.DataFrame.from_dict(search))
 print(y)
 
@@ -171,28 +190,28 @@ print(y)
 # COMMAND ----------
 
 filterdict={}
-search = {'question':['What is the difference between nuclear fusion and fission?'],'filter':[filterdict]}
+search = {'questions':['What is the difference between nuclear fusion and fission?'],'filter':[filterdict]}
 y = model.predict(pd.DataFrame.from_dict(search))
 print(y)
 
 # COMMAND ----------
 
 filterdict={}
-search = {'question':['What should we do if OSHA get involved in a chemical event?'],'filter':[filterdict]}
+search = {'questions':['What should we do if OSHA get involved in a chemical event?'],'filter':[filterdict]}
 y = model.predict(pd.DataFrame.from_dict(search))
 print(y)
 
 # COMMAND ----------
 
 filterdict={}
-search = {'question':['What are the exposure limits for acetyl methyl carbinol cause?'],'filter':[filterdict]}
+search = {'questions':['What are the exposure limits for acetyl methyl carbinol cause?'],'filter':[filterdict]}
 y = model.predict(pd.DataFrame.from_dict(search))
 print(y)
 
 # COMMAND ----------
 
 filterdict={'Name':'ACETYL METHYL CARBINOL'}
-search = {'question':['What are the exposure limits for acetyl methyl carbinol cause?'],'filter':[filterdict]}
+search = {'questions':['What are the exposure limits for acetyl methyl carbinol cause?'],'filter':[filterdict]}
 y = model.predict(pd.DataFrame.from_dict(search))
 print(y)
 
@@ -200,7 +219,7 @@ print(y)
 
 #check what the split JSON looks like to pass to our predict function.
 filterdict={'Name':'ACETALDEHYDE'}
-search = {'question':['what are some properties of Acetaldehyde?'],'filter':[filterdict]}
+search = {'questions':['what are some properties of Acetaldehyde?'],'filter':[filterdict]}
 json = pd.DataFrame.from_dict(search).to_json(orient='split')
 print(json)
 

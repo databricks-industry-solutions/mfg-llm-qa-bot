@@ -99,7 +99,7 @@ def callLLM(question, filter):
     filterdict={}
     if not filter.strip() == '':
         filterdict={'Name':f'{filter}'}
-    dict = {'question':[f'{question}'], 'filter':[filterdict]}
+    dict = {'questions':[f'{question}'], 'filter':[filterdict]}
     assemble_question = pd.DataFrame.from_dict(dict)
     data = score_model(assemble_question)
     answer = data["predictions"]["answer"]
