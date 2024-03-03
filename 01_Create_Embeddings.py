@@ -197,27 +197,19 @@ vsc = VectorSearchClient(workspace_url=configs["DATABRICKS_URL"], personal_acces
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC Delete existing indexes and vector search endpoint (optional)
+# MAGIC %md 
+# MAGIC Create the endpoint
 
 # COMMAND ----------
 
-lemap = vsc.list_endpoints()
-
-lenamelst = [True if le['name']==configs['vector_endpoint_name'] else False for le in lemap.get('endpoints', [])]
-if any(lenamelst) is False:
-  print('creating endpoint')
-  vsc.create_endpoint(configs['vector_endpoint_name'])
-limap = vsc.list_indexes(configs['vector_endpoint_name'])
-liname = [True if li['name']==f"{configs['source_catalog']}.{configs['source_schema']}.{configs['vector_index']}" else False for li in limap.get('vector_indexes', [])]
-if any(liname):
-  vsc.delete_index(endpoint_name=configs['vector_endpoint_name'], index_name=f"{configs['source_catalog']}.{configs['source_schema']}.{configs['vector_index']}")
-
+try:
 # disable if using a shared vector endpoint to avoid accidentally deleting it.
-# if any(lename):
-#   vsc.delete_endpoint(name=configs['vector_endpoint_name'])
-
-
+# vsc.delete_endpoint(name=configs['vector_endpoint_name'])  
+  vsc.create_endpoint(
+                name=configs['vector_endpoint_name'],
+                endpoint_type="STANDARD")
+except Exception as e:
+  print(e)
 
 # COMMAND ----------
 
@@ -227,17 +219,22 @@ time.sleep(5)
 
 # COMMAND ----------
 
-# MAGIC %md 
-# MAGIC Create the endpoint
+# MAGIC %md
+# MAGIC Delete existing indexes and vector search endpoint (optional)
 
 # COMMAND ----------
 
-try:
-  vsc.create_endpoint(
-                name=configs['vector_endpoint_name'],
-                endpoint_type="STANDARD")
-except Exception as e:
-  print(e)
+lemap = vsc.list_endpoints()
+
+lenamelst = [True if le['name']==configs['vector_endpoint_name'] else False for le in lemap.get('endpoints', [])]
+if any(lenamelst) is False:
+  print(f' {configs['vector_endpoint_name']} Endpoint not found')
+  
+limap = vsc.list_indexes(configs['vector_endpoint_name'])
+liname = [True if li['name']==f"{configs['source_catalog']}.{configs['source_schema']}.{configs['vector_index']}" else False for li in limap.get('vector_indexes', [])]
+if any(liname):
+  vsc.delete_index(endpoint_name=configs['vector_endpoint_name'], index_name=f"{configs['source_catalog']}.{configs['source_schema']}.{configs['vector_index']}")
+
 
 # COMMAND ----------
 

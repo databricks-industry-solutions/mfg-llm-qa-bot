@@ -77,6 +77,11 @@ username = dbutils.notebook.entry_point.getDbutils().notebook().getContext().use
 
 # COMMAND ----------
 
+import mlflow
+
+#workspace registry - False
+#uc registry - True
+configs['isucregistry']=False
 
 configs['source_catalog'] = "mfg_llm_cat"
 configs['source_schema'] = "mfg_llm_schema"
@@ -104,7 +109,15 @@ configs['prompt_template'] = """Use the following pieces of information to answe
     """
 
 configs['num_similar_docs']=10
-configs['registered_model_name'] = f"{configs['source_catalog']}.{configs['source_schema']}.mfg-llm-qabot"
+
+
+if configs['isucregistry'] is True:
+  mlflow.set_registry_uri("databricks-uc")
+  configs['registered_model_name'] = f"{configs['source_catalog']}.{configs['source_schema']}.mfg-llm-qabot"
+else:
+  mlflow.set_registry_uri("databricks")
+  configs['registered_model_name'] = f"mfg-llm-qabot" 
+
 configs['serving_endpoint_name'] = 'mfg-llm-qabot-serving-endpoint'
 
 
@@ -188,5 +201,5 @@ else:
 
 # DBTITLE 1,MLflow experiment
 import mlflow
-mlflow.set_registry_uri("databricks-uc")
+
 mlflow.set_experiment('/Users/{}/mfg_llm_sds_search'.format(username))

@@ -42,9 +42,18 @@ from mlflow.utils.databricks_utils import get_databricks_host_creds
 # COMMAND ----------
 
 client = mlflow.MlflowClient()
-#get the latest version of the registered model in MLFlow
-latest_version = client.get_model_version_by_alias(configs['registered_model_name'], 'champion').version
+vallmods = client.search_model_versions(f"name=\'{configs['registered_model_name']}\'", max_results=1000)
+
+latest_version = max([int(ver.version) for ver in vallmods])
 print(latest_version)
+
+# COMMAND ----------
+
+client = mlflow.MlflowClient()
+#get the latest version of the registered model in MLFlow
+if configs['isucregistry'] is True:
+  latest_version = client.get_model_version_by_alias(configs['registered_model_name'], 'champion').version
+
 # # gather other inputs the API needs
 serving_host = spark.conf.get("spark.databricks.workspaceUrl")
 creds = get_databricks_host_creds()
@@ -81,13 +90,13 @@ served_models = [
       "entity_version": latest_version,
       "workload_type": "CPU", #use GPU_MEDIUM for custom models. use CPU for foundational/external model
       "workload_size": "Small",
-      "scale_to_zero_enabled": 'false',
+      "scale_to_zero_enabled": 'true',
       "environment_vars":{
      }}] 
     }
   }
 ]
-#        #"DATABRICKS_HOST": f"{{{{secrets/{secret_scope_name}/{secret_key_name}}}}},
+#"DATABRICKS_HOST": f"{{{{secrets/{secret_scope_name}/{secret_key_name}}}}},
 #"traffic_config": {"routes": [{"served_model_name": configs['serving_endpoint_name'], "traffic_percentage": "100"}]}
 
 # COMMAND ----------

@@ -140,11 +140,13 @@ with mlflow.start_run():
 # COMMAND ----------
 
 client = mlflow.MlflowClient()
-v = client.search_model_versions(f"name=\'{configs['registered_model_name']}\'", max_results=1000)
+vallmods = client.search_model_versions(f"name=\'{configs['registered_model_name']}\'", max_results=1000)
 
-version = max([int(ver.version) for ver in v])
-print(version)
-client.set_registered_model_alias(configs['registered_model_name'], "champion", version)
+latest_version = max([int(ver.version) for ver in vallmods])
+print(latest_version)
+
+if configs['isucregistry'] is True:
+  client.set_registered_model_alias(configs['registered_model_name'], "champion", latest_version)
 
 # COMMAND ----------
 
@@ -153,7 +155,12 @@ client.set_registered_model_alias(configs['registered_model_name'], "champion", 
 
 # COMMAND ----------
 
-model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}@champion")
+if configs['isucregistry'] is True: 
+  model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}@champion")
+else:
+  model_version_uri = f"models:/{configs['registered_model_name']}/{latest_version}"
+  print(model_version_uri)
+  model=mlflow.pyfunc.load_model(model_version_uri)
 
 # COMMAND ----------
 
