@@ -75,9 +75,10 @@ served_models = [
   {
     "name": configs['serving_endpoint_name'],
     "config":{
-    "served_models": [{
-      "model_name": configs['registered_model_name'],
-      "model_version": latest_version,
+    "served_entities": [{
+      "name": configs['serving_endpoint_name'],
+      "entity_name": configs['registered_model_name'],
+      "entity_version": latest_version,
       "workload_type": "CPU", #use GPU_MEDIUM for custom models. use CPU for foundational/external model
       "workload_size": "Small",
       "scale_to_zero_enabled": 'false',

@@ -188,4 +188,5 @@ else:
 
 # DBTITLE 1,MLflow experiment
 import mlflow
+mlflow.set_registry_uri("databricks-uc")
 mlflow.set_experiment('/Users/{}/mfg_llm_sds_search'.format(username))

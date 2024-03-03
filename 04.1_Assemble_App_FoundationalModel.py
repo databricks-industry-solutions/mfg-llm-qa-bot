@@ -141,7 +141,8 @@ with mlflow.start_run():
 
 client = mlflow.MlflowClient()
 v = client.search_model_versions(f"name=\'{configs['registered_model_name']}\'", max_results=1000)
-version = max([ver.version for ver in v])
+
+version = max([int(ver.version) for ver in v])
 print(version)
 client.set_registered_model_alias(configs['registered_model_name'], "champion", version)
 

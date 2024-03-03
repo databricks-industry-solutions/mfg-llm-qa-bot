@@ -202,12 +202,17 @@ vsc = VectorSearchClient(workspace_url=configs["DATABRICKS_URL"], personal_acces
 
 # COMMAND ----------
 
+lemap = vsc.list_endpoints()
+
+lenamelst = [True if le['name']==configs['vector_endpoint_name'] else False for le in lemap.get('endpoints', [])]
+if any(lenamelst) is False:
+  print('creating endpoint')
+  vsc.create_endpoint(configs['vector_endpoint_name'])
 limap = vsc.list_indexes(configs['vector_endpoint_name'])
 liname = [True if li['name']==f"{configs['source_catalog']}.{configs['source_schema']}.{configs['vector_index']}" else False for li in limap.get('vector_indexes', [])]
 if any(liname):
   vsc.delete_index(endpoint_name=configs['vector_endpoint_name'], index_name=f"{configs['source_catalog']}.{configs['source_schema']}.{configs['vector_index']}")
-lemap = vsc.list_endpoints()
-lename = [True if le['name']==configs['vector_endpoint_name'] else False for le in lemap.get('endpoints', [])]
+
 # disable if using a shared vector endpoint to avoid accidentally deleting it.
 # if any(lename):
 #   vsc.delete_endpoint(name=configs['vector_endpoint_name'])
