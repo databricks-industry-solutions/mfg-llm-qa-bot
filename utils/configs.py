@@ -79,15 +79,15 @@ username = dbutils.notebook.entry_point.getDbutils().notebook().getContext().use
 
 import mlflow
 
-#workspace registry - False
-#uc registry - True
-configs['isucregistry']=True
+#to use workspace registry - False
+#to use uc registry - True
+configs['isucregistry']=False
 
 configs['source_catalog'] = "mfg_llm_cat"
 configs['source_schema'] = "mfg_llm_schema"
 configs['source_sds_table'] = "mfg_llm_sds"
 
-configs['vector_endpoint_name'] = "shared-demo-endpoint"
+configs['vector_endpoint_name'] = "one-env-shared-endpoint-1"
 
 # Vector index
 configs['vector_index'] = "mfg_llm_solnaccel_index"
