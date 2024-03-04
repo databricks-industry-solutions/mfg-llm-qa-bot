@@ -140,7 +140,7 @@ demo.launch(share=True)
 # COMMAND ----------
 
 # MAGIC %sh
-# MAGIC #ps -eaf | awk '/gradio/  {print $2}' | head -1 | xargs kill -9 
+# MAGIC ps -eaf | awk '/gradio/  {print $2}' | head -1 | xargs kill -9 
 
 # COMMAND ----------
 

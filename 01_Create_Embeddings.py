@@ -228,7 +228,7 @@ lemap = vsc.list_endpoints()
 
 lenamelst = [True if le['name']==configs['vector_endpoint_name'] else False for le in lemap.get('endpoints', [])]
 if any(lenamelst) is False:
-  print(f' {configs['vector_endpoint_name']} Endpoint not found')
+  print(f"{configs['vector_endpoint_name']} Endpoint not found')")
   
 limap = vsc.list_indexes(configs['vector_endpoint_name'])
 liname = [True if li['name']==f"{configs['source_catalog']}.{configs['source_schema']}.{configs['vector_index']}" else False for li in limap.get('vector_indexes', [])]
@@ -252,6 +252,10 @@ time.sleep(5)
 endpoint = vsc.get_endpoint(
   name=configs['vector_endpoint_name'])
 endpoint
+
+# COMMAND ----------
+
+time.sleep(20)
 
 # COMMAND ----------
 

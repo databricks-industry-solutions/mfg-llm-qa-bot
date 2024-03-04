@@ -81,7 +81,7 @@ import mlflow
 
 #workspace registry - False
 #uc registry - True
-configs['isucregistry']=False
+configs['isucregistry']=True
 
 configs['source_catalog'] = "mfg_llm_cat"
 configs['source_schema'] = "mfg_llm_schema"

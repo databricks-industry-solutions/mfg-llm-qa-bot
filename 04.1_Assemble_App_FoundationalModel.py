@@ -156,6 +156,7 @@ if configs['isucregistry'] is True:
 # COMMAND ----------
 
 if configs['isucregistry'] is True: 
+  print('Loading model from UC registry')
   model = mlflow.pyfunc.load_model(f"models:/{configs['registered_model_name']}@champion")
 else:
   model_version_uri = f"models:/{configs['registered_model_name']}/{latest_version}"

@@ -52,6 +52,7 @@ print(latest_version)
 client = mlflow.MlflowClient()
 #get the latest version of the registered model in MLFlow
 if configs['isucregistry'] is True:
+  print('Getting model version from UC registry')
   latest_version = client.get_model_version_by_alias(configs['registered_model_name'], 'champion').version
 
 # # gather other inputs the API needs
