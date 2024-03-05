@@ -118,7 +118,7 @@ else:
   mlflow.set_registry_uri("databricks")
   configs['registered_model_name'] = f"mfg-llm-qabot" 
 
-configs['serving_endpoint_name'] = 'mfg-llm-qabot-serving-endpoint'
+configs['serving_endpoint_name'] = 'mfg-llm-qabotse'
 
 
 #configs['model_name'] = 'togethercomputer/RedPajama-INCITE-Instruct-3B-v1'
