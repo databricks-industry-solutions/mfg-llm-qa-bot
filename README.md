@@ -9,10 +9,25 @@ The goal of this solution accelerator is to demonstrate how you can create a QA 
 ## Scope
 A customer can easily take this solution accelerator and replace it with a knowledge base of articles (i.e. in PDF format) to replicate the application that's been built. 
 
+## New Features (Mar 2024)
+* [Databricks Vector search](https://docs.databricks.com/en/generative-ai/vector-search.html) (previously FAISS)
+* Different model types
+  * [Foundational Model](https://docs.databricks.com/en/machine-learning/foundation-models/index.html) (Notebooks 2.1->3.1->4.1)
+  * [External Model](https://docs.databricks.com/en/generative-ai/external-models/index.html) (Notebooks 2.1->3.1->4.1)
+  * [Custom PyFunc model](https://mlflow.org/docs/latest/llms/custom-pyfunc-for-llms/notebooks/custom-pyfunc-advanced-llm.html) (Notebooks 2.3->3.3->4.3)
+  * Compound AI models (with [Langchain Agents](https://www.langchain.com/agents) using Wikipedia) (Notebooks 2.2)
+* [UC Model registry](https://docs.databricks.com/en/machine-learning/manage-model-lifecycle/upgrade-models.html) (Notebooks 5)
+* Self hosted Gradio app (previously on huggingface.co/spaces) (Notebook 6)
+
+
+
+
 ___
-<william.block@databricks.com>,
-<ramdas.murali@databricks.com>,
-<bala.amavasai@databricks.com>
+- <ramdas.murali@databricks.com>
+- <william.block@databricks.com>,
+- Testing - <veronica.gomes@databricks.com>
+- Thanks to Bala Amavasai for his valuable assistance
+
 ___
 
 
