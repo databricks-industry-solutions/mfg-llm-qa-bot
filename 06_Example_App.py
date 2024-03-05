@@ -47,6 +47,12 @@ os.environ['DATABRICKS_TOKEN']=configs["DATABRICKS_TOKEN"]
 # MAGIC %md
 # MAGIC Running this will start the form right within this notebook.
 # MAGIC
+# MAGIC Samples
+# MAGIC * compare properties of acetone and acetaldehyde. Show me the response in a table
+# MAGIC * What are the exposure limits for acetyl methyl carbinol?
+# MAGIC * When should OSHA get involved in a chemical event? what is their contact?
+# MAGIC *
+# MAGIC
 # MAGIC You can also see the public URL where you can run this from a browser
 # MAGIC
 # MAGIC ```Running on public URL: https://some_generated_url.gradio.live```

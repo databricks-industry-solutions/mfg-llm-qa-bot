@@ -53,9 +53,12 @@ import re
 # Need UC permissions to check or create a catalog/schema
 # if you dont have create permission then you cant check 'if not exists' either
 lstcatalog = spark.catalog.listCatalogs()
-if configs["source_catalog"] in lstcatalog: #catalog exists so skip
-  pass
-else:
+exist=False
+for cat in lstcatalog:
+  if configs["source_catalog"]==cat.name: 
+    exist=True
+
+if not exist:
   spark.sql(f'create catalog if not exists {configs["source_catalog"]}')
   spark.sql(f'create schema if not exists {configs["source_catalog"]}.{configs["source_schema"]}')
 

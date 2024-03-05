@@ -115,11 +115,11 @@ import mlflow.deployments
 from mlflow.deployments import get_deploy_client
 
 mlflow_deploy_client = mlflow.deployments.get_deploy_client("databricks")
-
+nameep = f"{configs['serving_endpoint_name']}_rkm"
 try:
   openaikey = f"{{{{secrets/solution-accelerator-cicd/openai_api}}}}" #change to your key
   mlflow_deploy_client.create_endpoint(
-    name=f"{configs['serving_endpoint_name']}_rkm",
+    name=nameep,
     config={
       "served_entities": [{
           "external_model": {
@@ -138,8 +138,9 @@ except Exception as e:
 
 # COMMAND ----------
 
+
 completions_response = mlflow_deploy_client.predict(
-    endpoint=f"{configs['serving_endpoint_name']}_rkm",
+    endpoint=nameep,
     inputs={
         "prompt": "How is ph level calculated",
         "temperature": 0.1,
